@@ -106,12 +106,18 @@ No user can read another user's data.
 
 ## Feature phases
 
-### Phase 1 — Foundation ✅ TODO
-- [ ] Project scaffold: Vite + React + Tailwind
-- [ ] Supabase project created, schema applied
+### Phase 1 — Foundation (in progress)
+
+**Resume point (2026-06-02):** Supabase project created, Vercel connected to GitHub repo.
+Next step: install Node.js (LTS) on this machine, then scaffold the Vite app.
+⚠️ Node.js is NOT yet installed — this is blocking all frontend scaffolding.
+
+- [ ] Project scaffold: Vite + React + Tailwind ← **START HERE next session**
+- [x] Supabase project created *(schema not yet applied)*
+- [ ] Supabase schema applied (recipes, meal_plans, shopping_list_cache tables)
 - [ ] Auth: email/password login (Supabase Auth)
 - [ ] Recipe library: list view, add recipe form
-- [ ] Deploy to Vercel (even if empty)
+- [x] Deploy to Vercel (connected, initial deploy triggered)
 
 **Why this order:** Get something live and deployed on day one.
 A deployed URL is more impressive than local code.
