@@ -13,6 +13,7 @@ create table if not exists public.recipes (
   rating int check (rating between 1 and 5),
   notes text,
   image_url text,
+  favorited boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

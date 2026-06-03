@@ -14,6 +14,7 @@ export interface Recipe {
   rating: number | null
   notes: string | null
   image_url: string | null
+  favorited: boolean
   created_at: string
   updated_at: string
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, MouseEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Link, useLocation } from 'react-router-dom'
 import RecipeIndex from '../components/RecipeIndex'
@@ -26,6 +26,7 @@ export default function HomePage({ session }: HomePageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeLetter, setActiveLetter] = useState<string | null>(null)
   const [updatingImageRecipeId, setUpdatingImageRecipeId] = useState<string | null>(null)
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [highlightedId, setHighlightedId] = useState<string | null>(
     (location.state as { newRecipeId?: string } | null)?.newRecipeId ?? null,
   )
@@ -117,11 +118,47 @@ export default function HomePage({ session }: HomePageProps) {
     }
   }
 
+  async function handleToggleFavorite(event: MouseEvent, recipeId: string, current: boolean) {
+    event.preventDefault()
+    const { data, error } = await supabase
+      .from('recipes')
+      .update({ favorited: !current })
+      .eq('id', recipeId)
+      .eq('user_id', session.user.id)
+      .select('*')
+      .single()
+
+    if (error) {
+      setErrorMessage(error.message)
+      return
+    }
+
+    setRecipes((previous) => previous.map((r) => (r.id === recipeId ? (data as Recipe) : r)))
+  }
+
+  const displayedRecipes = showFavoritesOnly ? recipes.filter((r) => r.favorited) : recipes
+
   return (
     <div className="p-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-950">Home</h1>
-        <p className="mt-2 text-gray-700">Browse your dishes and jump into cook mode quickly.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-gray-950">Home</h1>
+          <p className="mt-2 text-gray-700">Browse your dishes and jump into cook mode quickly.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFavoritesOnly((v) => !v)}
+          className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+            showFavoritesOnly
+              ? 'border-red-300 bg-red-50 text-red-600'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
+          }`}
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill={showFavoritesOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+          Favorites
+        </button>
       </div>
 
       {errorMessage ? (
@@ -132,14 +169,14 @@ export default function HomePage({ session }: HomePageProps) {
         <div className="grid gap-4 content-start">
           {isLoading ? <p className="text-sm text-gray-600">Loading recipes...</p> : null}
 
-          {!isLoading && recipes.length === 0 ? (
+          {!isLoading && displayedRecipes.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-sm text-gray-500">
-              No recipes yet. Use Add Recipe to create your first dish.
+              {showFavoritesOnly ? 'No favorites yet. Click the heart on a recipe to save it here.' : 'No recipes yet. Use Add Recipe to create your first dish.'}
             </div>
           ) : null}
 
-          {!isLoading && recipes.length > 0
-            ? recipes.map((recipe) => (
+          {!isLoading && displayedRecipes.length > 0
+            ? displayedRecipes.map((recipe) => (
                 <article
                   key={recipe.id}
                   ref={highlightedId === recipe.id ? (el) => { highlightRef.current = el } : undefined}
@@ -156,6 +193,16 @@ export default function HomePage({ session }: HomePageProps) {
                     <p className="mt-1 text-sm text-gray-700">
                       {recipe.tags.length > 0 ? recipe.tags.join(', ') : 'No tags yet'}
                     </p>
+                    <button
+                      type="button"
+                      aria-label={recipe.favorited ? 'Remove from favorites' : 'Add to favorites'}
+                      onClick={(e) => void handleToggleFavorite(e, recipe.id, recipe.favorited)}
+                      className="relative z-10 mt-1.5"
+                    >
+                      <svg viewBox="0 0 24 24" className={`h-4 w-4 transition-colors ${recipe.favorited ? 'text-red-500' : 'text-gray-300 hover:text-red-400'}`} fill={recipe.favorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    </button>
                   </div>
 
                   <div className="relative z-10 w-28 shrink-0 py-2">
