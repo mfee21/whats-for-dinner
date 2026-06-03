@@ -24,6 +24,22 @@ async function syncToAnyList(
   }
 }
 
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative ml-1 inline-flex align-middle">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-label="More info" className="cursor-default text-gray-400">
+        <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" strokeWidth="1.2"/>
+        <text x="6.5" y="10" textAnchor="middle" fontSize="7.5" fontWeight="600" fill="currentColor" fontFamily="serif">i</text>
+      </svg>
+      <span className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 w-52 rounded-md bg-gray-800 px-2.5 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+        {text}
+        {/* arrow */}
+        <span className="absolute right-2 top-full border-4 border-transparent border-t-gray-800" />
+      </span>
+    </span>
+  )
+}
+
 function AnyListToggle({ added, onClick }: { added: boolean; onClick: () => void }) {
   return (
     <button
@@ -311,7 +327,10 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="pb-2 text-left font-medium text-gray-500">Ingredient</th>
-                  <th className="pb-2 text-center font-medium text-gray-500">Need?</th>
+                  <th className="pb-2 text-center font-medium text-gray-500">
+                    Need?
+                    <InfoTooltip text="Toggle to flag ingredients you're out of. If AnyList is connected in Settings, they'll sync to your grocery list automatically." />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
