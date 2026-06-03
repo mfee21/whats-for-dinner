@@ -25,6 +25,8 @@ async function syncToAnyList(
   }
 }
 
+const TOOLTIP_W = 208 // w-52 in px
+
 function InfoTooltip({ text }: { text: string }) {
   const iconRef = useRef<SVGSVGElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
@@ -32,7 +34,12 @@ function InfoTooltip({ text }: { text: string }) {
   function handleMouseEnter() {
     if (!iconRef.current) return
     const r = iconRef.current.getBoundingClientRect()
-    setPos({ top: r.top + r.height / 2, left: r.right + 10 })
+    const midY = r.top + r.height / 2
+    // Prefer right; fall back to left when there isn't room
+    const left = window.innerWidth - r.right >= TOOLTIP_W + 12
+      ? r.right + 8
+      : r.left - TOOLTIP_W - 8
+    setPos({ top: midY, left })
   }
 
   return (
