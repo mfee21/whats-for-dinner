@@ -40,7 +40,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
   const [rating, setRating] = useState('')
   const [notes, setNotes] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [importedImageUrl, setImportedImageUrl] = useState<string | null>(null)
+  const [importedImageUrl, setImportedImageUrl] = useState<string | null | undefined>(undefined)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   function clearRecipeForm() {
@@ -53,7 +53,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
     setRating('')
     setNotes('')
     setImageFile(null)
-    setImportedImageUrl(null)
+    setImportedImageUrl(undefined)
     if (imageInputRef.current) {
       imageInputRef.current.value = ''
     }
@@ -90,7 +90,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
       if (data.ingredients?.length) setIngredientsText(data.ingredients.join('\n'))
       if (data.instructions) setInstructions(data.instructions)
       if (data.notes) setNotes(data.notes)
-      if (data.imageUrl) setImportedImageUrl(data.imageUrl)
+      if (type === 'url') setImportedImageUrl(data.imageUrl ?? null)
 
       setParseMessage('Recipe imported. Review and save.')
     } catch {
@@ -360,11 +360,15 @@ export default function RecipesPage({ session }: RecipesPageProps) {
                 className="mt-1 block w-full cursor-pointer rounded-md border border-gray-400 bg-gray-50 px-3 py-2 text-sm text-gray-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-gray-200 file:px-3 file:py-1 file:text-sm file:font-medium file:text-gray-700 focus:border-gray-900 focus:outline-none"
               />
             </label>
-            {importedImageUrl && !imageFile ? (
-              <div className="flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
-                <img src={importedImageUrl} alt="" className="h-10 w-10 rounded object-cover" />
-                <p className="text-sm text-emerald-800">Image captured from URL. Upload a photo above to replace it.</p>
-              </div>
+            {!imageFile && importedImageUrl !== undefined ? (
+              importedImageUrl ? (
+                <div className="flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+                  <img src={importedImageUrl} alt="" className="h-10 w-10 rounded object-cover" />
+                  <p className="text-sm text-emerald-800">Image captured from URL. Upload a photo above to replace it.</p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No image found at that URL. You can upload one above.</p>
+              )
             ) : null}
 
             <div className="flex items-center gap-3">
