@@ -70,21 +70,26 @@ function DroppableDay({
   const dateStr = localDateStr(date)
   const todayStr = localDateStr(new Date())
   const isToday = dateStr === todayStr
-  const { isOver, setNodeRef } = useDroppable({ id: dateStr })
+  const isPast = dateStr < todayStr
+  const { isOver, setNodeRef } = useDroppable({ id: dateStr, disabled: isPast })
 
   return (
     <div
       ref={setNodeRef}
       className={`flex min-w-0 flex-col gap-2 rounded-lg border p-2 transition-colors ${
-        isOver ? 'border-gray-500 bg-gray-100' : 'border-gray-300 bg-white'
+        isPast
+          ? 'border-gray-200 bg-gray-50'
+          : isOver
+            ? 'border-gray-500 bg-gray-100'
+            : 'border-gray-300 bg-white'
       } ${isToday ? 'ring-2 ring-emerald-200' : ''}`}
     >
       <div className="flex items-start justify-between gap-1">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+          <p className={`text-xs font-semibold uppercase tracking-wide ${isPast ? 'text-gray-400' : 'text-gray-600'}`}>
             {DAY_NAMES[date.getDay()]}
           </p>
-          <p className={`text-sm font-medium ${isToday ? 'text-emerald-700' : 'text-gray-800'}`}>
+          <p className={`text-sm font-medium ${isToday ? 'text-emerald-700' : isPast ? 'text-gray-400' : 'text-gray-800'}`}>
             {formatDisplay(date)}
           </p>
         </div>
@@ -96,17 +101,21 @@ function DroppableDay({
       </div>
 
       {recipe ? (
-        <div className="group relative rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
-          <p className="break-words pr-4 text-xs text-gray-700">{recipe.name}</p>
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove meal"
-            className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-red-500 group-hover:block"
-          >
-            ×
-          </button>
+        <div className={`group relative rounded-md border px-2 py-1.5 ${isPast ? 'border-gray-200 bg-gray-100' : 'border-gray-200 bg-gray-50'}`}>
+          <p className={`break-words text-xs ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700'}`}>{recipe.name}</p>
+          {!isPast ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label="Remove meal"
+              className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-red-500 group-hover:block"
+            >
+              ×
+            </button>
+          ) : null}
         </div>
+      ) : isPast ? (
+        <p className="text-xs text-gray-300">—</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           <div className="rounded border border-dashed border-gray-300 py-3 text-center text-xs text-gray-500">
