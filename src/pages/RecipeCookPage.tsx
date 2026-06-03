@@ -24,6 +24,56 @@ async function syncToAnyList(
   }
 }
 
+function AnyListToggle({ added, onClick }: { added: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={added ? 'Remove from AnyList' : 'Add to AnyList'}
+      className="relative shrink-0 transition-opacity hover:opacity-80 active:scale-95"
+    >
+      {/* Icon tile — blue when added, gray when not */}
+      <span
+        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+          added ? 'bg-blue-500' : 'bg-gray-200'
+        }`}
+      >
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+          {/* Three list rows: mark on left, line on right */}
+          {added ? (
+            <>
+              {/* Checkmarks */}
+              <polyline points="2,4.5 3.2,6 4.5,3.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="2,8 3.2,9.5 4.5,7" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="2,11.5 3.2,13 4.5,10.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </>
+          ) : (
+            <>
+              {/* Empty bullet dots */}
+              <circle cx="3" cy="4.5" r="1.1" fill="#9CA3AF"/>
+              <circle cx="3" cy="8" r="1.1" fill="#9CA3AF"/>
+              <circle cx="3" cy="11.5" r="1.1" fill="#9CA3AF"/>
+            </>
+          )}
+          {/* Horizontal lines */}
+          <line x1="6" y1="4.5" x2="13" y2="4.5" stroke={added ? 'white' : '#9CA3AF'} strokeWidth="1.4" strokeLinecap="round"/>
+          <line x1="6" y1="8" x2="13" y2="8" stroke={added ? 'white' : '#9CA3AF'} strokeWidth="1.4" strokeLinecap="round"/>
+          <line x1="6" y1="11.5" x2="13" y2="11.5" stroke={added ? 'white' : '#9CA3AF'} strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+      </span>
+
+      {/* Green checkmark badge when added */}
+      {added && (
+        <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-green-500 ring-1 ring-white">
+          <svg width="7" height="7" viewBox="0 0 7 7" fill="none" aria-hidden="true">
+            <polyline points="1,3.5 2.8,5.5 6,1.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      )}
+    </button>
+  )
+}
+
 type RecipeCookPageProps = {
   session: Session
 }
@@ -268,23 +318,12 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
                 return (
                   <li
                     key={`${ingredient.name}-${index}`}
-                    className={`flex items-center justify-between gap-2 rounded border px-3 py-2 transition-colors ${isNeeded ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}
+                    className="flex items-center justify-between gap-3 rounded border border-gray-200 px-3 py-2"
                   >
-                    <span className={isNeeded ? 'text-amber-800' : ''}>
+                    <span className="text-sm text-gray-700">
                       {prefix ? `${prefix} ${cleanName}` : cleanName}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => void toggleNeed(cleanName)}
-                      title={isNeeded ? 'Remove from shopping list' : 'Add to shopping list'}
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-xs transition-colors ${
-                        isNeeded
-                          ? 'bg-amber-200 text-amber-800 hover:bg-amber-300'
-                          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                      }`}
-                    >
-                      {isNeeded ? 'Need ✓' : '+ Need'}
-                    </button>
+                    <AnyListToggle added={isNeeded} onClick={() => void toggleNeed(cleanName)} />
                   </li>
                 )
               })
