@@ -40,6 +40,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
   const [rating, setRating] = useState('')
   const [notes, setNotes] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [importedImageUrl, setImportedImageUrl] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   function clearRecipeForm() {
@@ -52,6 +53,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
     setRating('')
     setNotes('')
     setImageFile(null)
+    setImportedImageUrl(null)
     if (imageInputRef.current) {
       imageInputRef.current.value = ''
     }
@@ -75,6 +77,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
         ingredients?: string[]
         instructions?: string
         notes?: string
+        imageUrl?: string | null
         error?: string
       }
 
@@ -87,6 +90,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
       if (data.ingredients?.length) setIngredientsText(data.ingredients.join('\n'))
       if (data.instructions) setInstructions(data.instructions)
       if (data.notes) setNotes(data.notes)
+      if (data.imageUrl) setImportedImageUrl(data.imageUrl)
 
       setParseMessage('Recipe imported. Review and save.')
     } catch {
@@ -148,10 +152,11 @@ export default function RecipesPage({ session }: RecipesPageProps) {
 
     setIsSaving(true)
 
-    let imageDataUrl: string | null = null
+    let finalImageUrl: string | null = importedImageUrl
+
     if (imageFile) {
       try {
-        imageDataUrl = await fileToDataUrl(imageFile)
+        finalImageUrl = await fileToDataUrl(imageFile)
       } catch {
         setSaveMessage('Failed to read the image file.')
         setIsSaving(false)
@@ -169,7 +174,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
         tags: parsedTags,
         rating: parsedRating,
         notes: sanitizeMultilineText(notes) || null,
-        image_url: imageDataUrl,
+        image_url: finalImageUrl,
       })
       .select('*')
       .single()

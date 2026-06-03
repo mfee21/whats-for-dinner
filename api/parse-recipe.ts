@@ -17,6 +17,13 @@ Rules:
 - notes: useful extra information only — empty string if nothing notable
 - Return ONLY the JSON object. No markdown fences, no explanation, no preamble.`
 
+function extractOgImage(html: string): string | null {
+  const match =
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  return match?.[1] ?? null
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -50,6 +57,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let recipeText = body.content
 
+  let imageUrl: string | null = null
+
   if (body.type === 'url') {
     try {
       const pageRes = await fetch(body.content, {
@@ -61,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       }
       const html = await pageRes.text()
+      imageUrl = extractOgImage(html)
       recipeText = stripHtml(html).slice(0, 15000)
     } catch {
       return res.status(400).json({
@@ -100,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       instructions: string
       notes: string
     }
-    return res.status(200).json(parsed)
+    return res.status(200).json({ ...parsed, imageUrl })
   } catch {
     return res.status(422).json({
       error: "Couldn't extract a recipe from that content. Try pasting the text directly.",
