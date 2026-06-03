@@ -23,10 +23,9 @@ create table if not exists public.meal_plans (
   user_id uuid not null references auth.users(id) on delete cascade,
   recipe_id uuid not null references public.recipes(id) on delete cascade,
   planned_date date not null,
-  meal_slot text not null,
+  meal_slot text not null default 'meal',
   calendar_event_id text,
-  created_at timestamptz not null default now(),
-  constraint meal_plans_meal_slot_check check (meal_slot in ('breakfast', 'lunch', 'dinner'))
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.shopping_list_cache (

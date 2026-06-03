@@ -10,14 +10,7 @@ type PlannerPageProps = {
   session: Session
 }
 
-const SLOTS = ['breakfast', 'lunch', 'dinner'] as const
-type Slot = typeof SLOTS[number]
-
-const SLOT_LABELS: Record<Slot, string> = {
-  breakfast: 'Breakfast',
-  lunch: 'Lunch',
-  dinner: 'Dinner',
-}
+const MAX_PER_DAY = 6
 
 function localDateStr(date: Date): string {
   const y = date.getFullYear()
@@ -63,94 +56,53 @@ function DraggableRecipe({ recipe }: { recipe: Recipe }) {
   )
 }
 
-function DroppableSlot({
-  dropId,
-  slot,
+function RecipeCard({
   recipe,
   isPast,
   onRemove,
-  onRandom,
 }: {
-  dropId: string
-  slot: Slot
-  recipe: Recipe | undefined
+  recipe: Recipe
   isPast: boolean
   onRemove: () => void
-  onRandom: () => void
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
-  const { isOver, setNodeRef } = useDroppable({ id: dropId, disabled: isPast })
 
   return (
-    <div ref={setNodeRef} className="flex flex-col gap-1">
-      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isPast ? 'text-gray-300' : 'text-gray-400'}`}>
-        {SLOT_LABELS[slot]}
-      </p>
-
-      {recipe ? (
-        <div className={`group relative rounded border px-2 py-1.5 ${isPast ? 'border-gray-200 bg-gray-100' : isOver ? 'border-gray-400 bg-gray-100' : 'border-gray-200 bg-gray-50'}`}>
-          {confirmingRemove ? (
-            <div className="flex flex-col gap-1">
-              <p className="text-xs text-gray-500">Remove?</p>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => { onRemove(); setConfirmingRemove(false) }}
-                  className="flex-1 rounded border border-red-200 bg-white py-0.5 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingRemove(false)}
-                  className="flex-1 rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400"
-                >
-                  No
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className={`break-words text-xs ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700'}`}>
-                {recipe.name}
-              </p>
-              {isPast ? (
-                <button
-                  type="button"
-                  onClick={() => setConfirmingRemove(true)}
-                  aria-label="Remove meal"
-                  className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-gray-600 group-hover:block"
-                >
-                  ×
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onRemove}
-                  aria-label="Remove meal"
-                  className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-red-500 group-hover:block"
-                >
-                  ×
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      ) : isPast ? (
-        <p className="text-xs text-gray-300">—</p>
-      ) : (
+    <div className={`group relative rounded border px-2 py-1.5 ${isPast ? 'border-gray-200 bg-gray-100' : 'border-gray-200 bg-gray-50'}`}>
+      {confirmingRemove ? (
         <div className="flex flex-col gap-1">
-          <div className={`rounded border border-dashed py-2 text-center text-xs transition-colors ${isOver ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300 text-gray-500'}`}>
-            Drop here
+          <p className="text-xs text-gray-500">Remove?</p>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => { onRemove(); setConfirmingRemove(false) }}
+              className="flex-1 rounded border border-red-200 bg-white py-0.5 text-xs text-red-600 hover:bg-red-50"
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingRemove(false)}
+              className="flex-1 rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400"
+            >
+              No
+            </button>
           </div>
+        </div>
+      ) : (
+        <>
+          <p className={`break-words text-xs ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700'}`}>
+            {recipe.name}
+          </p>
           <button
             type="button"
-            onClick={onRandom}
-            className="rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400 hover:text-gray-700"
+            onClick={() => isPast ? setConfirmingRemove(true) : onRemove()}
+            aria-label="Remove meal"
+            className={`absolute right-1 top-1 hidden text-sm leading-none group-hover:block ${isPast ? 'text-gray-400 hover:text-gray-600' : 'text-gray-400 hover:text-red-500'}`}
           >
-            Random
+            ×
           </button>
-        </div>
+        </>
       )}
     </div>
   )
@@ -158,24 +110,37 @@ function DroppableSlot({
 
 function DroppableDay({
   date,
-  getRecipeForSlot,
-  onRemoveSlot,
-  onRandomSlot,
+  plans,
+  recipes,
+  onRemove,
+  onRandom,
 }: {
   date: Date
-  getRecipeForSlot: (slot: Slot) => Recipe | undefined
-  onRemoveSlot: (slot: Slot) => void
-  onRandomSlot: (slot: Slot) => void
+  plans: MealPlan[]
+  recipes: Recipe[]
+  onRemove: (planId: string) => void
+  onRandom: () => void
 }) {
   const dateStr = localDateStr(date)
   const todayStr = localDateStr(new Date())
   const isToday = dateStr === todayStr
   const isPast = dateStr < todayStr
+  const atMax = plans.length >= MAX_PER_DAY
+  const { isOver, setNodeRef } = useDroppable({ id: dateStr, disabled: isPast || atMax })
+
+  const dayRecipes = plans
+    .map((p) => ({ plan: p, recipe: recipes.find((r) => r.id === p.recipe_id) }))
+    .filter((x): x is { plan: MealPlan; recipe: Recipe } => x.recipe !== undefined)
 
   return (
     <div
-      className={`flex min-w-0 flex-col gap-3 rounded-lg border p-2 ${
-        isPast ? 'border-gray-200 bg-gray-50' : 'border-gray-300 bg-white'
+      ref={setNodeRef}
+      className={`flex min-w-0 flex-col gap-2 rounded-lg border p-2 transition-colors ${
+        isPast
+          ? 'border-gray-200 bg-gray-50'
+          : isOver
+            ? 'border-gray-500 bg-gray-100'
+            : 'border-gray-300 bg-white'
       } ${isToday ? 'ring-2 ring-emerald-200' : ''}`}
     >
       <div className="flex items-start justify-between gap-1">
@@ -194,17 +159,37 @@ function DroppableDay({
         ) : null}
       </div>
 
-      {SLOTS.map((slot) => (
-        <DroppableSlot
-          key={slot}
-          dropId={`${dateStr}:${slot}`}
-          slot={slot}
-          recipe={getRecipeForSlot(slot)}
+      {dayRecipes.map(({ plan, recipe }) => (
+        <RecipeCard
+          key={plan.id}
+          recipe={recipe}
           isPast={isPast}
-          onRemove={() => onRemoveSlot(slot)}
-          onRandom={() => onRandomSlot(slot)}
+          onRemove={() => onRemove(plan.id)}
         />
       ))}
+
+      {!isPast && (
+        atMax ? (
+          <p className="text-center text-[10px] text-gray-400">Max {MAX_PER_DAY} reached</p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <div className={`rounded border border-dashed py-2 text-center text-xs transition-colors ${isOver ? 'border-gray-400 bg-gray-100 text-gray-600' : 'border-gray-300 text-gray-500'}`}>
+              Drop here
+            </div>
+            <button
+              type="button"
+              onClick={onRandom}
+              className="rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400 hover:text-gray-700"
+            >
+              Random
+            </button>
+          </div>
+        )
+      )}
+
+      {isPast && dayRecipes.length === 0 && (
+        <p className="text-xs text-gray-300">—</p>
+      )}
     </div>
   )
 }
@@ -230,7 +215,6 @@ export default function PlannerPage({ session }: PlannerPageProps) {
 
       if (!error) setRecipes((data as Recipe[]) ?? [])
     }
-
     void loadRecipes()
   }, [session.user.id])
 
@@ -251,69 +235,41 @@ export default function PlannerPage({ session }: PlannerPageProps) {
       } else {
         setMealPlans((data as MealPlan[]) ?? [])
       }
-
       setIsLoading(false)
     }
-
     void loadMealPlans()
   }, [weekStart, session.user.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function getMealPlanForSlot(date: Date, slot: string): MealPlan | undefined {
-    return mealPlans.find(
-      (mp) => mp.planned_date === localDateStr(date) && mp.meal_slot === slot,
-    )
+  function getPlansForDay(date: Date): MealPlan[] {
+    return mealPlans.filter((mp) => mp.planned_date === localDateStr(date))
   }
 
-  function getRecipeForSlot(date: Date, slot: string): Recipe | undefined {
-    const plan = getMealPlanForSlot(date, slot)
-    if (!plan) return undefined
-    return recipes.find((r) => r.id === plan.recipe_id)
-  }
-
-  async function assignMeal(date: Date, slot: string, recipeId: string) {
-    const existing = getMealPlanForSlot(date, slot)
-
-    if (existing) {
-      const { data, error } = await supabase
-        .from('meal_plans')
-        .update({ recipe_id: recipeId })
-        .eq('id', existing.id)
-        .select('*')
-        .single()
-
-      if (error) { setErrorMessage(error.message); return }
-      setMealPlans((prev) => prev.map((mp) => (mp.id === existing.id ? (data as MealPlan) : mp)))
-    } else {
-      const { data, error } = await supabase
-        .from('meal_plans')
-        .insert({
-          user_id: session.user.id,
-          recipe_id: recipeId,
-          planned_date: localDateStr(date),
-          meal_slot: slot,
-        })
-        .select('*')
-        .single()
-
-      if (error) { setErrorMessage(error.message); return }
-      setMealPlans((prev) => [...prev, data as MealPlan])
-    }
-  }
-
-  async function removeMeal(date: Date, slot: string) {
-    const existing = getMealPlanForSlot(date, slot)
-    if (!existing) return
-
-    const { error } = await supabase.from('meal_plans').delete().eq('id', existing.id)
+  async function addMeal(date: Date, recipeId: string) {
+    const { data, error } = await supabase
+      .from('meal_plans')
+      .insert({
+        user_id: session.user.id,
+        recipe_id: recipeId,
+        planned_date: localDateStr(date),
+        meal_slot: 'meal',
+      })
+      .select('*')
+      .single()
 
     if (error) { setErrorMessage(error.message); return }
-    setMealPlans((prev) => prev.filter((mp) => mp.id !== existing.id))
+    setMealPlans((prev) => [...prev, data as MealPlan])
   }
 
-  function assignRandomMeal(date: Date, slot: string) {
+  async function removeMeal(planId: string) {
+    const { error } = await supabase.from('meal_plans').delete().eq('id', planId)
+    if (error) { setErrorMessage(error.message); return }
+    setMealPlans((prev) => prev.filter((mp) => mp.id !== planId))
+  }
+
+  function addRandomMeal(date: Date) {
     if (recipes.length === 0) return
     const pick = recipes[Math.floor(Math.random() * recipes.length)]
-    void assignMeal(date, slot, pick.id)
+    void addMeal(date, pick.id)
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -326,14 +282,10 @@ export default function PlannerPage({ session }: PlannerPageProps) {
     if (!over) return
 
     const recipeId = String(active.id)
-    const overId = String(over.id) // "YYYY-MM-DD:slot"
-    const colonIdx = overId.lastIndexOf(':')
-    const dateStr = overId.slice(0, colonIdx)
-    const slot = overId.slice(colonIdx + 1)
-    const [year, month, day] = dateStr.split('-').map(Number)
+    const [year, month, day] = String(over.id).split('-').map(Number)
     const date = new Date(year, month - 1, day)
 
-    void assignMeal(date, slot, recipeId)
+    void addMeal(date, recipeId)
   }
 
   return (
@@ -384,9 +336,10 @@ export default function PlannerPage({ session }: PlannerPageProps) {
                 <DroppableDay
                   key={localDateStr(date)}
                   date={date}
-                  getRecipeForSlot={(slot) => getRecipeForSlot(date, slot)}
-                  onRemoveSlot={(slot) => void removeMeal(date, slot)}
-                  onRandomSlot={(slot) => assignRandomMeal(date, slot)}
+                  plans={getPlansForDay(date)}
+                  recipes={recipes}
+                  onRemove={(planId) => void removeMeal(planId)}
+                  onRandom={() => addRandomMeal(date)}
                 />
               ))}
             </div>
@@ -394,7 +347,7 @@ export default function PlannerPage({ session }: PlannerPageProps) {
 
           <aside>
             <h2 className="text-sm font-semibold text-gray-700">Recipes</h2>
-            <p className="mt-0.5 text-xs text-gray-600">Drag onto a slot to plan it.</p>
+            <p className="mt-0.5 text-xs text-gray-600">Drag onto a day to add it.</p>
             <div className="mt-3 grid gap-2">
               {recipes.length === 0 ? (
                 <p className="text-xs text-gray-400">No recipes yet.</p>
