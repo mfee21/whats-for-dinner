@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-
-export const config = { runtime: 'edge' }
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const SYSTEM_PROMPT = `You are a recipe extraction assistant. Extract structured recipe data from the provided text.
 
@@ -33,34 +32,20 @@ function stripHtml(html: string): string {
     .trim()
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'API key not configured on server.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return res.status(500).json({ error: 'API key not configured on server.' })
   }
 
-  let body: { type: 'text' | 'url'; content: string }
-  try {
-    body = await req.json() as { type: 'text' | 'url'; content: string }
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  const body = req.body as { type?: 'text' | 'url'; content?: string }
 
   if (!body.content?.trim()) {
-    return new Response(JSON.stringify({ error: 'Content is required.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return res.status(400).json({ error: 'Content is required.' })
   }
 
   let recipeText = body.content
@@ -71,18 +56,16 @@ export default async function handler(req: Request): Promise<Response> {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; recipe-parser/1.0)' },
       })
       if (!pageRes.ok) {
-        return new Response(
-          JSON.stringify({ error: `Could not fetch that URL (HTTP ${pageRes.status}). Try pasting the recipe text instead.` }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } },
-        )
+        return res.status(400).json({
+          error: `Could not fetch that URL (HTTP ${pageRes.status}). Try pasting the recipe text instead.`,
+        })
       }
       const html = await pageRes.text()
       recipeText = stripHtml(html).slice(0, 15000)
     } catch {
-      return new Response(
-        JSON.stringify({ error: 'Could not reach that URL. Try pasting the recipe text instead.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      )
+      return res.status(400).json({
+        error: 'Could not reach that URL. Try pasting the recipe text instead.',
+      })
     }
   }
 
@@ -103,11 +86,8 @@ export default async function handler(req: Request): Promise<Response> {
       messages: [{ role: 'user', content: recipeText }],
     })
   } catch (err) {
-    const message = err instanceof Anthropic.APIError ? err.message : 'AI extraction failed.'
-    return new Response(JSON.stringify({ error: message }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    const errMessage = err instanceof Anthropic.APIError ? err.message : 'AI extraction failed.'
+    return res.status(502).json({ error: errMessage })
   }
 
   const rawText = message.content[0]?.type === 'text' ? message.content[0].text : ''
@@ -120,13 +100,10 @@ export default async function handler(req: Request): Promise<Response> {
       instructions: string
       notes: string
     }
-    return new Response(JSON.stringify(parsed), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return res.status(200).json(parsed)
   } catch {
-    return new Response(
-      JSON.stringify({ error: "Couldn't extract a recipe from that content. Try pasting the text directly." }),
-      { status: 422, headers: { 'Content-Type': 'application/json' } },
-    )
+    return res.status(422).json({
+      error: "Couldn't extract a recipe from that content. Try pasting the text directly.",
+    })
   }
 }
