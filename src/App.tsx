@@ -6,6 +6,7 @@ import AuthPage from './pages/AuthPage'
 import HomePage from './pages/HomePage'
 import RecipesPage from './pages/RecipesPage'
 import RecipeCookPage from './pages/RecipeCookPage'
+import RecipeEditPage from './pages/RecipeEditPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/" element={<HomePage session={session} />} />
           <Route path="/add" element={<RecipesPage session={session} />} />
           <Route path="/recipes/:recipeId/cook" element={<RecipeCookPage session={session} />} />
+          <Route path="/recipes/:recipeId/edit" element={<RecipeEditPage session={session} />} />
         </Routes>
       </main>
     </div>

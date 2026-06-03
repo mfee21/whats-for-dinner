@@ -156,6 +156,12 @@ export default function HomePage({ session }: HomePageProps) {
                     <p className="mt-1 text-sm text-gray-700">
                       {recipe.tags.length > 0 ? recipe.tags.join(', ') : 'No tags yet'}
                     </p>
+                    <Link
+                      to={`/recipes/${recipe.id}/edit`}
+                      className="relative z-10 mt-1 inline-block text-xs text-gray-400 hover:text-gray-700"
+                    >
+                      Edit
+                    </Link>
                   </div>
 
                   <div className="relative z-10 w-28 shrink-0 py-2">
