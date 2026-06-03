@@ -152,7 +152,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
 
     setIsSaving(true)
 
-    let finalImageUrl: string | null = importedImageUrl
+    let finalImageUrl: string | null = importedImageUrl ?? null
 
     if (imageFile) {
       try {
