@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { DndContext, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { MealPlan, Recipe } from '../types/database'
@@ -68,7 +69,7 @@ function RecipeCard({
   const [confirmingRemove, setConfirmingRemove] = useState(false)
 
   return (
-    <div className={`group relative rounded border px-2 py-1.5 ${isPast ? 'border-gray-200 bg-gray-100' : 'border-gray-200 bg-gray-50'}`}>
+    <div className={`group relative rounded border px-2 py-1.5 ${isPast ? 'border-gray-300 bg-gray-100' : 'border-gray-300 bg-gray-50'}`}>
       {confirmingRemove ? (
         <div className="flex flex-col gap-1">
           <p className="text-xs text-gray-500">Remove?</p>
@@ -76,14 +77,14 @@ function RecipeCard({
             <button
               type="button"
               onClick={() => { onRemove(); setConfirmingRemove(false) }}
-              className="flex-1 rounded border border-red-200 bg-white py-0.5 text-xs text-red-600 hover:bg-red-50"
+              className="relative z-10 flex-1 rounded border border-red-200 bg-white py-0.5 text-xs text-red-600 hover:bg-red-50"
             >
               Yes
             </button>
             <button
               type="button"
               onClick={() => setConfirmingRemove(false)}
-              className="flex-1 rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400"
+              className="relative z-10 flex-1 rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400"
             >
               No
             </button>
@@ -91,14 +92,17 @@ function RecipeCard({
         </div>
       ) : (
         <>
-          <p className={`break-words text-xs ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700'}`}>
+          <Link
+            to={`/recipes/${recipe.id}/cook`}
+            className={`block break-words text-xs after:absolute after:inset-0 after:rounded ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700 hover:text-gray-900'}`}
+          >
             {recipe.name}
-          </p>
+          </Link>
           <button
             type="button"
             onClick={() => isPast ? setConfirmingRemove(true) : onRemove()}
             aria-label="Remove meal"
-            className={`absolute right-1 top-1 hidden text-sm leading-none group-hover:block ${isPast ? 'text-gray-400 hover:text-gray-600' : 'text-gray-400 hover:text-red-500'}`}
+            className={`relative z-10 absolute right-1 top-1 hidden text-sm leading-none group-hover:block ${isPast ? 'text-gray-400 hover:text-gray-600' : 'text-gray-400 hover:text-red-500'}`}
           >
             ×
           </button>
