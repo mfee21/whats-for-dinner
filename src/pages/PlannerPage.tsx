@@ -49,7 +49,7 @@ function DraggableRecipe({ recipe }: { recipe: Recipe }) {
       {...attributes}
       {...listeners}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`cursor-grab rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm transition-opacity active:cursor-grabbing ${isDragging ? 'opacity-40' : ''}`}
+      className={`cursor-grab rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm transition-opacity active:cursor-grabbing ${isDragging ? 'opacity-40' : ''}`}
     >
       {recipe.name}
     </div>
@@ -79,13 +79,20 @@ function DroppableDay({
         isOver ? 'border-gray-500 bg-gray-100' : 'border-gray-300 bg-white'
       } ${isToday ? 'ring-2 ring-emerald-200' : ''}`}
     >
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-          {DAY_NAMES[date.getDay()]}
-        </p>
-        <p className={`text-sm font-medium ${isToday ? 'text-emerald-700' : 'text-gray-800'}`}>
-          {formatDisplay(date)}
-        </p>
+      <div className="flex items-start justify-between gap-1">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+            {DAY_NAMES[date.getDay()]}
+          </p>
+          <p className={`text-sm font-medium ${isToday ? 'text-emerald-700' : 'text-gray-800'}`}>
+            {formatDisplay(date)}
+          </p>
+        </div>
+        {isToday ? (
+          <span className="mt-0.5 rounded border border-emerald-300 bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700">
+            Today
+          </span>
+        ) : null}
       </div>
 
       {recipe ? (
@@ -101,14 +108,14 @@ function DroppableDay({
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <div className="rounded border border-dashed border-gray-300 py-3 text-center text-xs text-gray-500">
             Drop here
           </div>
           <button
             type="button"
             onClick={onRandom}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            className="rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400 hover:text-gray-700"
           >
             Random
           </button>
@@ -315,7 +322,7 @@ export default function PlannerPage({ session }: PlannerPageProps) {
 
           <aside>
             <h2 className="text-sm font-semibold text-gray-700">Recipes</h2>
-            <p className="mt-0.5 text-xs text-gray-400">Drag onto a day to plan it.</p>
+            <p className="mt-0.5 text-xs text-gray-600">Drag onto a day to plan it.</p>
             <div className="mt-3 grid gap-2">
               {recipes.length === 0 ? (
                 <p className="text-xs text-gray-400">No recipes yet.</p>
