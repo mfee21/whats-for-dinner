@@ -76,11 +76,11 @@ function DroppableDay({
     <div
       ref={setNodeRef}
       className={`flex min-w-0 flex-col gap-2 rounded-lg border p-2 transition-colors ${
-        isOver ? 'border-gray-400 bg-gray-100' : 'border-gray-200 bg-white'
+        isOver ? 'border-gray-500 bg-gray-100' : 'border-gray-300 bg-white'
       } ${isToday ? 'ring-2 ring-emerald-200' : ''}`}
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
           {DAY_NAMES[date.getDay()]}
         </p>
         <p className={`text-sm font-medium ${isToday ? 'text-emerald-700' : 'text-gray-800'}`}>
@@ -102,7 +102,7 @@ function DroppableDay({
         </div>
       ) : (
         <div className="flex flex-col gap-1">
-          <div className="rounded border border-dashed border-gray-200 py-3 text-center text-xs text-gray-300">
+          <div className="rounded border border-dashed border-gray-300 py-3 text-center text-xs text-gray-500">
             Drop here
           </div>
           <button
