@@ -51,7 +51,11 @@ export default function RecipeIndex({
 
   const trimmedQuery = searchQuery.trim().toLowerCase()
   const searchResults = trimmedQuery
-    ? sortedRecipes.filter((r) => r.name.toLowerCase().includes(trimmedQuery))
+    ? sortedRecipes.filter(
+        (r) =>
+          r.name.toLowerCase().includes(trimmedQuery) ||
+          r.tags.some((tag) => tag.toLowerCase().includes(trimmedQuery)),
+      )
     : null
 
   return (
