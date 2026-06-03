@@ -335,7 +335,7 @@ export default function PlannerPage({ session }: PlannerPageProps) {
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_14rem]">
           <div className={`overflow-x-auto transition-opacity ${isLoading ? 'opacity-50' : ''}`}>
-            <div className="grid min-w-[560px] grid-cols-7 gap-2">
+            <div className="grid min-w-[560px] grid-cols-7 items-start gap-2">
               {weekDays.map((date) => (
                 <DroppableDay
                   key={localDateStr(date)}
