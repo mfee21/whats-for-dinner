@@ -31,10 +31,10 @@ function InfoTooltip({ text }: { text: string }) {
         <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" strokeWidth="1.2"/>
         <text x="6.5" y="10" textAnchor="middle" fontSize="7.5" fontWeight="600" fill="currentColor" fontFamily="serif">i</text>
       </svg>
-      <span className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 w-52 rounded-md bg-gray-800 px-2.5 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+      <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 w-52 -translate-y-1/2 rounded-md bg-gray-800 px-2.5 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
         {text}
-        {/* arrow */}
-        <span className="absolute right-2 top-full border-4 border-transparent border-t-gray-800" />
+        {/* arrow pointing left */}
+        <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800" />
       </span>
     </span>
   )
