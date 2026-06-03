@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useNavigate } from 'react-router-dom'
 import RecipeIndex from '../components/RecipeIndex'
-import { parseRecipeText, sanitizeRecipeListLine, sanitizeRecipeTextLine } from '../lib/recipeParser'
+import { sanitizeRecipeListLine, sanitizeRecipeTextLine } from '../lib/recipeParser'
 import { supabase } from '../lib/supabase'
 import type { Ingredient, Recipe } from '../types/database'
 
@@ -27,7 +27,9 @@ export default function RecipesPage({ session }: RecipesPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [importUrl, setImportUrl] = useState('')
   const [importText, setImportText] = useState('')
+  const [isImporting, setIsImporting] = useState(false)
   const [parseMessage, setParseMessage] = useState<string | null>(null)
   const [activeLetter, setActiveLetter] = useState<string | null>(null)
 
@@ -55,31 +57,43 @@ export default function RecipesPage({ session }: RecipesPageProps) {
     }
   }
 
-  function handleParseImportText() {
-    const parsed = parseRecipeText(importText)
+  async function handleImport(type: 'text' | 'url', content: string) {
+    if (!content.trim()) return
 
-    if (!parsed.name && parsed.ingredients.length === 0 && !parsed.instructions) {
-      setParseMessage(parsed.warnings.join(' '))
-      return
+    setIsImporting(true)
+    setParseMessage(null)
+
+    try {
+      const res = await fetch('/api/parse-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, content }),
+      })
+
+      const data = await res.json() as {
+        name?: string
+        ingredients?: string[]
+        instructions?: string
+        notes?: string
+        error?: string
+      }
+
+      if (!res.ok || data.error) {
+        setParseMessage(data.error ?? 'Import failed.')
+        return
+      }
+
+      if (data.name) setName(data.name)
+      if (data.ingredients?.length) setIngredientsText(data.ingredients.join('\n'))
+      if (data.instructions) setInstructions(data.instructions)
+      if (data.notes) setNotes(data.notes)
+
+      setParseMessage('Recipe imported. Review and save.')
+    } catch {
+      setParseMessage('Import failed. Check your connection and try again.')
+    } finally {
+      setIsImporting(false)
     }
-
-    if (parsed.name) {
-      setName(parsed.name)
-    }
-
-    if (parsed.ingredients.length > 0) {
-      setIngredientsText(parsed.ingredients.join('\n'))
-    }
-
-    if (parsed.instructions) {
-      setInstructions(parsed.instructions)
-    }
-
-    setParseMessage(
-      parsed.warnings.length > 0
-        ? `Imported with notes: ${parsed.warnings.join(' ')}`
-        : 'Imported recipe text into the form. Review and save.',
-    )
   }
 
   function parseIngredients(value: string): Ingredient[] {
@@ -215,6 +229,33 @@ export default function RecipesPage({ session }: RecipesPageProps) {
       <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="rounded-lg border border-gray-300 bg-white p-5 shadow-sm">
           <label className="block text-sm font-semibold text-gray-800">
+            Import from URL
+            <div className="mt-1 flex gap-2">
+              <input
+                type="url"
+                value={importUrl}
+                onChange={(event) => setImportUrl(event.target.value)}
+                placeholder="https://www.anyrecipesite.com/best-tacos"
+                className="flex-1 rounded-md border border-gray-400 bg-gray-50 px-3 py-2 text-sm text-gray-950 focus:border-gray-900 focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={isImporting || !importUrl.trim()}
+                onClick={() => void handleImport('url', importUrl)}
+                className="rounded-md border border-gray-400 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isImporting ? 'Fetching…' : 'Fetch'}
+              </button>
+            </div>
+          </label>
+
+          <div className="relative my-4 flex items-center">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="mx-3 text-xs text-gray-400">or paste text</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          <label className="block text-sm font-semibold text-gray-800">
             Paste Recipe Text
             <textarea
               value={importText}
@@ -227,10 +268,11 @@ export default function RecipesPage({ session }: RecipesPageProps) {
           <div className="mt-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={handleParseImportText}
-              className="rounded-md border border-gray-400 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:border-gray-900 hover:text-gray-900"
+              disabled={isImporting || !importText.trim()}
+              onClick={() => void handleImport('text', importText)}
+              className="rounded-md border border-gray-400 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Import From Text
+              {isImporting ? 'Importing…' : 'Import from Text'}
             </button>
             {parseMessage ? <p className="text-sm text-gray-700">{parseMessage}</p> : null}
           </div>
