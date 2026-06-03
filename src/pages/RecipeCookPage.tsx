@@ -306,31 +306,38 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
 
         <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm lg:sticky lg:top-24 lg:self-start">
           <h2 className="text-lg font-semibold text-gray-900">Ingredients</h2>
-          <ul className="mt-4 grid gap-2 text-sm text-gray-700">
-            {recipe.ingredients.length > 0 ? (
-              recipe.ingredients.map((ingredient, index) => {
-                const cleanName = sanitizeRecipeListLine(ingredient.name)
-                const amountPart = ingredient.amount.trim()
-                const unitPart = ingredient.unit.trim()
-                const prefix = [amountPart, unitPart].filter(Boolean).join(' ')
-                const isNeeded = neededIngredients.has(cleanName)
+          {recipe.ingredients.length > 0 ? (
+            <table className="mt-4 w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="pb-2 text-left font-medium text-gray-500">Ingredient</th>
+                  <th className="pb-2 text-center font-medium text-gray-500">Need?</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recipe.ingredients.map((ingredient, index) => {
+                  const cleanName = sanitizeRecipeListLine(ingredient.name)
+                  const amountPart = ingredient.amount.trim()
+                  const unitPart = ingredient.unit.trim()
+                  const prefix = [amountPart, unitPart].filter(Boolean).join(' ')
+                  const isNeeded = neededIngredients.has(cleanName)
 
-                return (
-                  <li
-                    key={`${ingredient.name}-${index}`}
-                    className="flex items-center justify-between gap-3 rounded border border-gray-200 px-3 py-2"
-                  >
-                    <span className="text-sm text-gray-700">
-                      {prefix ? `${prefix} ${cleanName}` : cleanName}
-                    </span>
-                    <AnyListToggle added={isNeeded} onClick={() => void toggleNeed(cleanName)} />
-                  </li>
-                )
-              })
-            ) : (
-              <li className="text-gray-500">No ingredients found.</li>
-            )}
-          </ul>
+                  return (
+                    <tr key={`${ingredient.name}-${index}`}>
+                      <td className="py-2 pr-3 text-gray-700">
+                        {prefix ? `${prefix} ${cleanName}` : cleanName}
+                      </td>
+                      <td className="py-2 text-center">
+                        <AnyListToggle added={isNeeded} onClick={() => void toggleNeed(cleanName)} />
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="mt-3 text-sm text-gray-500">No ingredients found.</p>
+          )}
         </aside>
       </div>
     </div>
