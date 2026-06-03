@@ -71,6 +71,7 @@ function DroppableDay({
   const todayStr = localDateStr(new Date())
   const isToday = dateStr === todayStr
   const isPast = dateStr < todayStr
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
   const { isOver, setNodeRef } = useDroppable({ id: dateStr, disabled: isPast })
 
   return (
@@ -102,17 +103,50 @@ function DroppableDay({
 
       {recipe ? (
         <div className={`group relative rounded-md border px-2 py-1.5 ${isPast ? 'border-gray-200 bg-gray-100' : 'border-gray-200 bg-gray-50'}`}>
-          <p className={`break-words text-xs ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700'}`}>{recipe.name}</p>
-          {!isPast ? (
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label="Remove meal"
-              className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-red-500 group-hover:block"
-            >
-              ×
-            </button>
-          ) : null}
+          {confirmingRemove ? (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-gray-500">Remove?</p>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => { onRemove(); setConfirmingRemove(false) }}
+                  className="flex-1 rounded border border-red-200 bg-white py-0.5 text-xs text-red-600 hover:bg-red-50"
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingRemove(false)}
+                  className="flex-1 rounded border border-gray-200 bg-white py-0.5 text-xs text-gray-500 hover:border-gray-400"
+                >
+                  No
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className={`break-words text-xs ${isPast ? 'text-gray-400' : 'pr-4 text-gray-700'}`}>{recipe.name}</p>
+              {isPast ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingRemove(true)}
+                  aria-label="Remove meal"
+                  className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-gray-600 group-hover:block"
+                >
+                  ×
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  aria-label="Remove meal"
+                  className="absolute right-1 top-1 hidden text-sm leading-none text-gray-400 hover:text-red-500 group-hover:block"
+                >
+                  ×
+                </button>
+              )}
+            </>
+          )}
         </div>
       ) : isPast ? (
         <p className="text-xs text-gray-300">—</p>
