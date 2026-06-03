@@ -29,7 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey) {
-    return res.status(500).json({ error: 'Supabase not configured' })
+    console.error('anylist-sync: missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars')
+    return res.status(500).json({ error: 'Supabase not configured — add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to Vercel env vars' })
   }
 
   // Use the user's JWT so RLS applies — only their own user_settings are readable
@@ -58,6 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await anylist.login()
     await anylist.getLists()
+    console.log(`anylist-sync: connected to AnyList as ${settings.anylist_email as string}`)
 
     const list = anylist.getListByName(listName)
     if (!list) {
@@ -74,6 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'AnyList sync failed'
+    console.error('anylist-sync error:', message)
     return res.status(502).json({ error: message })
   } finally {
     await anylist.teardown()
