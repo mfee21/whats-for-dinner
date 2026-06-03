@@ -13,7 +13,7 @@ Return ONLY a valid JSON object with these exact fields:
 
 Rules:
 - ingredients: one string per ingredient, include quantities and units (e.g. "2 cups flour", "1 tbsp olive oil")
-- instructions: numbered steps joined by newlines
+- instructions: numbered steps joined by newlines. Each step should contain one primary action. If the source text combines multiple actions into one step, split them into separate steps. Never merge distinct actions into one step.
 - notes: useful extra information only — empty string if nothing notable
 - Return ONLY the JSON object. No markdown fences, no explanation, no preamble.`
 
