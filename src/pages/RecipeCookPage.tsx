@@ -158,6 +158,12 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
             Reset checkboxes
           </button>
           <Link
+            to={`/recipes/${recipeId}/edit`}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900"
+          >
+            Edit
+          </Link>
+          <Link
             to="/"
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900"
           >
