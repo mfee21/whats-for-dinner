@@ -122,14 +122,14 @@ Next step: install Node.js (LTS) on this machine, then scaffold the Vite app.
 **Why this order:** Get something live and deployed on day one.
 A deployed URL is more impressive than local code.
 
-### Phase 2 — Recipe ingestion (AI extraction)
-- [ ] Vercel edge function: `/api/parse-recipe`
-- [ ] Input method 1: paste raw text (copied from any website or cookbook)
-- [ ] Input method 2: paste a URL (fetch page text server-side, send to Claude)
-- [ ] Input method 3: upload a photo (send image to Claude vision)
-- [ ] Claude extracts: recipe name, ingredients `[{ name, amount, unit }]`, and numbered steps
-- [ ] User reviews the extracted result and can edit before saving
-- [ ] Saves into the `recipes` table on confirm
+### Phase 2 — Recipe ingestion (AI extraction) ✓ COMPLETE
+- [x] Vercel edge function: `/api/parse-recipe`
+- [x] Input method 1: paste raw text (copied from any website or cookbook)
+- [x] Input method 2: paste a URL (fetch page text server-side, send to Claude)
+- [x] Claude extracts: recipe name, ingredients `[{ name, amount, unit }]`, and numbered steps
+- [x] User reviews the extracted result and can edit before saving
+- [x] Saves into the `recipes` table on confirm
+- ~~Input method 3: upload a photo~~ — removed; URL import covers the use case adequately
 
 **Why Claude here:** Extraction from unstructured text/images is exactly what LLMs are
 genuinely good at. This is not AI for AI's sake — it removes the biggest friction point
