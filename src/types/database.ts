@@ -36,3 +36,19 @@ export interface ShoppingListCache {
   items: Ingredient[]
   generated_at: string
 }
+
+export interface PantryNeed {
+  id: string
+  user_id: string
+  ingredient_name: string
+  added_at: string
+}
+
+export interface UserSettings {
+  id: string
+  user_id: string
+  anylist_email: string | null
+  anylist_password: string | null
+  anylist_list_name: string | null
+  updated_at: string
+}

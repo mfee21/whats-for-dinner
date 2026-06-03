@@ -5,6 +5,25 @@ import { sanitizeRecipeListLine } from '../lib/recipeParser'
 import { supabase } from '../lib/supabase'
 import type { Recipe } from '../types/database'
 
+async function syncToAnyList(
+  action: 'add' | 'remove',
+  ingredientName: string,
+  accessToken: string,
+) {
+  try {
+    await fetch('/api/anylist-sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ action, ingredientName }),
+    })
+  } catch {
+    // Best-effort — AnyList sync failure never blocks the UI
+  }
+}
+
 type RecipeCookPageProps = {
   session: Session
 }
@@ -22,6 +41,7 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
+  const [neededIngredients, setNeededIngredients] = useState<Set<string>>(new Set())
 
   const steps = useMemo(() => instructionStepsFromText(recipe?.instructions ?? ''), [recipe?.instructions])
 
@@ -97,6 +117,41 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
       setCheckedSteps({})
     }
   }, [progressKey, recipe])
+
+  useEffect(() => {
+    async function loadNeeds() {
+      const { data } = await supabase
+        .from('pantry_needs')
+        .select('ingredient_name')
+        .eq('user_id', session.user.id)
+      if (data) setNeededIngredients(new Set(data.map((r) => r.ingredient_name as string)))
+    }
+    void loadNeeds()
+  }, [session.user.id])
+
+  async function toggleNeed(ingredientName: string) {
+    const isNeeded = neededIngredients.has(ingredientName)
+
+    setNeededIngredients((prev) => {
+      const next = new Set(prev)
+      isNeeded ? next.delete(ingredientName) : next.add(ingredientName)
+      return next
+    })
+
+    if (isNeeded) {
+      await supabase
+        .from('pantry_needs')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('ingredient_name', ingredientName)
+    } else {
+      await supabase.from('pantry_needs').insert({ user_id: session.user.id, ingredient_name: ingredientName })
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (token) void syncToAnyList(isNeeded ? 'remove' : 'add', ingredientName, token)
+  }
 
   function toggleStep(index: number) {
     setCheckedSteps((previous) => {
@@ -208,10 +263,28 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
                 const amountPart = ingredient.amount.trim()
                 const unitPart = ingredient.unit.trim()
                 const prefix = [amountPart, unitPart].filter(Boolean).join(' ')
+                const isNeeded = neededIngredients.has(cleanName)
 
                 return (
-                  <li key={`${ingredient.name}-${index}`} className="rounded border border-gray-200 px-3 py-2">
-                    {prefix ? `${prefix} ${cleanName}` : cleanName}
+                  <li
+                    key={`${ingredient.name}-${index}`}
+                    className={`flex items-center justify-between gap-2 rounded border px-3 py-2 transition-colors ${isNeeded ? 'border-amber-300 bg-amber-50' : 'border-gray-200'}`}
+                  >
+                    <span className={isNeeded ? 'text-amber-800' : ''}>
+                      {prefix ? `${prefix} ${cleanName}` : cleanName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void toggleNeed(cleanName)}
+                      title={isNeeded ? 'Remove from shopping list' : 'Add to shopping list'}
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-xs transition-colors ${
+                        isNeeded
+                          ? 'bg-amber-200 text-amber-800 hover:bg-amber-300'
+                          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                      }`}
+                    >
+                      {isNeeded ? 'Need ✓' : '+ Need'}
+                    </button>
                   </li>
                 )
               })
