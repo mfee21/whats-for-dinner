@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-// anylist is a CJS module with no TypeScript types
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const AnyList = require('anylist') as new (opts: { email: string; password: string }) => {
+type AnyListInstance = {
   login(): Promise<void>
   getLists(): Promise<void>
   getListByName(name: string): {
@@ -14,6 +12,8 @@ const AnyList = require('anylist') as new (opts: { email: string; password: stri
   createItem(opts: { name: string }): unknown
   teardown(): Promise<void>
 }
+
+type AnyListConstructor = new (opts: { email: string; password: string }) => AnyListInstance
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -30,10 +30,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey) {
     console.error('anylist-sync: missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars')
-    return res.status(500).json({ error: 'Supabase not configured — add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to Vercel env vars' })
+    return res.status(500).json({ error: 'Supabase not configured' })
   }
 
-  // Use the user's JWT so RLS applies — only their own user_settings are readable
+  // Lazy-require inside handler so module load errors return a readable response
+  // instead of FUNCTION_INVOCATION_FAILED
+  let AnyList: AnyListConstructor
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    AnyList = require('anylist') as AnyListConstructor
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('anylist-sync: failed to load anylist module:', message)
+    return res.status(500).json({ error: `Module load failed: ${message}` })
+  }
+
   const db = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   })
@@ -44,7 +55,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .maybeSingle()
 
   if (!settings?.anylist_email || !settings?.anylist_password) {
-    // No credentials configured — not an error, integration is just disabled
     return res.status(200).json({ skipped: true, reason: 'No AnyList credentials configured' })
   }
 
@@ -59,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await anylist.login()
     await anylist.getLists()
-    console.log(`anylist-sync: connected to AnyList as ${settings.anylist_email as string}`)
+    console.log(`anylist-sync: connected as ${settings.anylist_email as string}`)
 
     const list = anylist.getListByName(listName)
     if (!list) {
@@ -76,9 +86,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'AnyList sync failed'
-    console.error('anylist-sync error:', message)
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('anylist-sync error:', message, stack)
     return res.status(502).json({ error: message })
   } finally {
-    await anylist.teardown()
+    try {
+      await anylist.teardown()
+    } catch {
+      // teardown errors are non-fatal
+    }
   }
 }
