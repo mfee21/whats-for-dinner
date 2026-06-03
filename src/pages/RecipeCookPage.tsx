@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { Link, useParams } from 'react-router-dom'
 import { sanitizeRecipeListLine } from '../lib/recipeParser'
@@ -25,17 +26,40 @@ async function syncToAnyList(
 }
 
 function InfoTooltip({ text }: { text: string }) {
+  const iconRef = useRef<SVGSVGElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  function handleMouseEnter() {
+    if (!iconRef.current) return
+    const r = iconRef.current.getBoundingClientRect()
+    setPos({ top: r.top + r.height / 2, left: r.right + 10 })
+  }
+
   return (
-    <span className="group relative ml-1 inline-flex align-middle">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-label="More info" className="cursor-default text-gray-400">
+    <span
+      className="ml-1 inline-flex cursor-default align-middle"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setPos(null)}
+    >
+      <svg
+        ref={iconRef}
+        width="13" height="13" viewBox="0 0 13 13" fill="none"
+        className="text-gray-400"
+        aria-label="More info"
+      >
         <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" strokeWidth="1.2"/>
         <text x="6.5" y="10" textAnchor="middle" fontSize="7.5" fontWeight="600" fill="currentColor" fontFamily="serif">i</text>
       </svg>
-      <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 w-52 -translate-y-1/2 rounded-md bg-gray-800 px-2.5 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-        {text}
-        {/* arrow pointing left */}
-        <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800" />
-      </span>
+
+      {pos && createPortal(
+        <div
+          className="pointer-events-none fixed z-50 w-52 rounded-md bg-gray-800 px-2.5 py-2 text-xs leading-relaxed text-white shadow-lg"
+          style={{ top: pos.top, left: pos.left, transform: 'translateY(-50%)' }}
+        >
+          {text}
+        </div>,
+        document.body,
+      )}
     </span>
   )
 }
@@ -327,9 +351,11 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="pb-2 text-left font-medium text-gray-500">Ingredient</th>
-                  <th className="pb-2 text-center font-medium text-gray-500">
-                    Need?
-                    <InfoTooltip text="Toggle to flag ingredients you're out of. If AnyList is connected in Settings, they'll sync to your grocery list automatically." />
+                  <th className="pb-2 font-medium text-gray-500">
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Need?</span>
+                      <InfoTooltip text="Toggle to flag ingredients you're out of. If AnyList is connected in Settings, they'll sync to your grocery list automatically." />
+                    </div>
                   </th>
                 </tr>
               </thead>
