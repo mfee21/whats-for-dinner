@@ -29,19 +29,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey) {
-    console.error('anylist-sync: missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars')
+    console.error('anylist-sync: missing Supabase env vars')
     return res.status(500).json({ error: 'Supabase not configured' })
   }
 
-  // Lazy-require inside handler so module load errors return a readable response
-  // instead of FUNCTION_INVOCATION_FAILED
+  // Dynamic import works in ESM context; CJS module.exports becomes .default
   let AnyList: AnyListConstructor
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    AnyList = require('anylist') as AnyListConstructor
+    const mod = await import('anylist')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    AnyList = ((mod as any).default ?? mod) as AnyListConstructor
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('anylist-sync: failed to load anylist module:', message)
+    console.error('anylist-sync: failed to import anylist:', message)
     return res.status(500).json({ error: `Module load failed: ${message}` })
   }
 
