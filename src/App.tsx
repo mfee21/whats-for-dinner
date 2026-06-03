@@ -8,6 +8,7 @@ import RecipesPage from './pages/RecipesPage'
 import RecipeCookPage from './pages/RecipeCookPage'
 import RecipeEditPage from './pages/RecipeEditPage'
 import PlannerPage from './pages/PlannerPage'
+import ShoppingListPage from './pages/ShoppingListPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -69,6 +70,12 @@ export default function App() {
           >
             Planner
           </Link>
+          <Link
+            to="/shopping"
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900"
+          >
+            Shopping
+          </Link>
           <div className="ml-auto flex items-center gap-4 text-sm text-gray-500">
             <span>{session.user.email}</span>
             <button
@@ -89,6 +96,7 @@ export default function App() {
           <Route path="/recipes/:recipeId/cook" element={<RecipeCookPage session={session} />} />
           <Route path="/recipes/:recipeId/edit" element={<RecipeEditPage session={session} />} />
           <Route path="/plan" element={<PlannerPage session={session} />} />
+          <Route path="/shopping" element={<ShoppingListPage session={session} />} />
         </Routes>
       </main>
     </div>
