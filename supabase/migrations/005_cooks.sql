@@ -16,5 +16,8 @@ create policy "Users manage their own cooks"
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+grant all on public.cooks to authenticated;
+grant all on public.cooks to anon;
+
 alter table public.meal_plans
   add column if not exists cook_id uuid references public.cooks(id) on delete set null;
