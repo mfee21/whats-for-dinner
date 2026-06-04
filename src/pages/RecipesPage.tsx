@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import RecipeIndex from '../components/RecipeIndex'
 import { sanitizeRecipeListLine, sanitizeRecipeTextLine } from '../lib/recipeParser'
 import { supabase } from '../lib/supabase'
-import type { Ingredient, Recipe } from '../types/database'
+import { PREP_TIMINGS } from '../types/database'
+import type { Ingredient, PrepTask, PrepTiming, Recipe } from '../types/database'
 
 type RecipesPageProps = {
   session: Session
@@ -43,6 +44,11 @@ export default function RecipesPage({ session }: RecipesPageProps) {
   const [importedImageUrl, setImportedImageUrl] = useState<string | null | undefined>(undefined)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
+  const [prepTasks, setPrepTasks] = useState<PrepTask[]>([])
+  const [newPrepTask, setNewPrepTask] = useState('')
+  const [newPrepTiming, setNewPrepTiming] = useState<PrepTiming>('day_before')
+  const [newPrepNotify, setNewPrepNotify] = useState(false)
+
   function clearRecipeForm() {
     setImportText('')
     setParseMessage(null)
@@ -54,9 +60,24 @@ export default function RecipesPage({ session }: RecipesPageProps) {
     setNotes('')
     setImageFile(null)
     setImportedImageUrl(undefined)
+    setPrepTasks([])
+    setNewPrepTask('')
     if (imageInputRef.current) {
       imageInputRef.current.value = ''
     }
+  }
+
+  function addPrepTask() {
+    if (!newPrepTask.trim()) return
+    setPrepTasks((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), task: newPrepTask.trim(), timing: newPrepTiming, notify: newPrepNotify },
+    ])
+    setNewPrepTask('')
+  }
+
+  function removePrepTask(id: string) {
+    setPrepTasks((prev) => prev.filter((pt) => pt.id !== id))
   }
 
   async function handleImport(type: 'text' | 'url', content: string) {
@@ -175,6 +196,7 @@ export default function RecipesPage({ session }: RecipesPageProps) {
         rating: parsedRating,
         notes: sanitizeMultilineText(notes) || null,
         image_url: finalImageUrl,
+        prep_tasks: prepTasks,
       })
       .select('*')
       .single()
@@ -357,6 +379,72 @@ export default function RecipesPage({ session }: RecipesPageProps) {
                 placeholder="Kids liked this with extra cheese."
               />
             </label>
+
+            <div>
+              <p className="text-sm font-semibold text-gray-800">Advanced Prep (optional)</p>
+              <p className="mt-0.5 mb-2 text-xs text-gray-500">Steps to complete ahead of time — marinating, sous vide, thawing, etc.</p>
+
+              {prepTasks.length > 0 && (
+                <ul className="mb-2 divide-y divide-gray-100 rounded-md border border-gray-200 bg-gray-50">
+                  {prepTasks.map((pt) => (
+                    <li key={pt.id} className="flex items-center gap-3 px-3 py-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">{pt.task}</span>
+                      <span className="shrink-0 text-xs text-gray-400">{PREP_TIMINGS[pt.timing]}</span>
+                      {pt.notify && (
+                        <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" viewBox="0 0 16 16" fill="currentColor" aria-label="Remind me">
+                          <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
+                        </svg>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePrepTask(pt.id)}
+                        aria-label={`Remove ${pt.task}`}
+                        className="shrink-0 text-base leading-none text-gray-400 hover:text-red-500"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={newPrepTask}
+                  onChange={(e) => setNewPrepTask(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPrepTask() } }}
+                  placeholder="e.g. Marinate chicken"
+                  className="min-w-0 flex-1 rounded-md border border-gray-400 bg-gray-50 px-3 py-2 text-sm text-gray-950 focus:border-gray-900 focus:outline-none"
+                />
+                <select
+                  value={newPrepTiming}
+                  onChange={(e) => setNewPrepTiming(e.target.value as PrepTiming)}
+                  className="rounded-md border border-gray-400 bg-gray-50 px-2 py-2 text-sm text-gray-700 focus:border-gray-900 focus:outline-none"
+                >
+                  {Object.entries(PREP_TIMINGS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={newPrepNotify}
+                    onChange={(e) => setNewPrepNotify(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  Remind me
+                </label>
+                <button
+                  type="button"
+                  onClick={addPrepTask}
+                  disabled={!newPrepTask.trim()}
+                  className="rounded-md border border-gray-400 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
 
             <label className="text-sm font-semibold text-gray-800">
               Photo (optional)
