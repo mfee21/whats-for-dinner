@@ -4,6 +4,25 @@ export interface Ingredient {
   unit: string
 }
 
+export const PREP_TIMINGS = {
+  '30min': '30 min before',
+  '1hr': '1 hour before',
+  '2hr': '2 hours before',
+  '4hr': '4 hours before',
+  'evening_before': 'Evening before',
+  'day_before': 'Day before',
+  '2days_before': '2 days before',
+} as const
+
+export type PrepTiming = keyof typeof PREP_TIMINGS
+
+export interface PrepTask {
+  id: string
+  task: string
+  timing: PrepTiming
+  notify: boolean
+}
+
 export interface Recipe {
   id: string
   user_id: string
@@ -15,6 +34,7 @@ export interface Recipe {
   notes: string | null
   image_url: string | null
   favorited: boolean
+  prep_tasks: PrepTask[]
   created_at: string
   updated_at: string
 }

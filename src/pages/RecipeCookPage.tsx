@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Link, useParams } from 'react-router-dom'
 import { sanitizeRecipeListLine } from '../lib/recipeParser'
 import { supabase } from '../lib/supabase'
+import { PREP_TIMINGS } from '../types/database'
 import type { Recipe } from '../types/database'
 
 async function syncToAnyList(
@@ -138,6 +139,7 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({})
+  const [checkedPrep, setCheckedPrep] = useState<Record<string, boolean>>({})
   const [neededIngredients, setNeededIngredients] = useState<Set<string>>(new Set())
 
   const steps = useMemo(() => instructionStepsFromText(recipe?.instructions ?? ''), [recipe?.instructions])
@@ -145,6 +147,10 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
   const progressKey = recipe
     ? `cook-progress:${session.user.id}:${recipe.id}`
     : `cook-progress:${session.user.id}:unknown`
+
+  const prepKey = recipe
+    ? `cook-prep:${session.user.id}:${recipe.id}`
+    : `cook-prep:${session.user.id}:unknown`
 
   useEffect(() => {
     let isMounted = true
@@ -216,6 +222,16 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
   }, [progressKey, recipe])
 
   useEffect(() => {
+    if (!recipe) return
+    try {
+      const raw = window.localStorage.getItem(prepKey)
+      setCheckedPrep(raw ? (JSON.parse(raw) as Record<string, boolean>) : {})
+    } catch {
+      setCheckedPrep({})
+    }
+  }, [prepKey, recipe])
+
+  useEffect(() => {
     if (!recipeId) return
     async function loadNeeds() {
       const { data } = await supabase
@@ -251,6 +267,14 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
     if (token) void syncToAnyList(isNeeded ? 'remove' : 'add', ingredientName, token)
+  }
+
+  function togglePrepTask(id: string) {
+    setCheckedPrep((prev) => {
+      const next = { ...prev, [id]: !prev[id] }
+      try { window.localStorage.setItem(prepKey, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
   }
 
   function toggleStep(index: number) {
@@ -326,6 +350,38 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
           </Link>
         </div>
       </div>
+
+      {recipe.prep_tasks.length > 0 && (
+        <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-base font-semibold text-amber-900">Advanced Prep</h2>
+            <p className="text-xs text-amber-700">Complete these before you start cooking</p>
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {recipe.prep_tasks.map((pt) => (
+              <li key={pt.id}>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(checkedPrep[pt.id])}
+                    onChange={() => togglePrepTask(pt.id)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-amber-400 accent-amber-600"
+                  />
+                  <span className={checkedPrep[pt.id] ? 'text-sm text-gray-400 line-through' : 'text-sm text-amber-900'}>
+                    {pt.task}
+                    <span className="ml-2 text-xs text-amber-600/80">{PREP_TIMINGS[pt.timing]}</span>
+                    {pt.notify && (
+                      <svg className="ml-1.5 inline h-3 w-3 text-amber-500" viewBox="0 0 16 16" fill="currentColor" aria-label="Reminder set">
+                        <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
+                      </svg>
+                    )}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
