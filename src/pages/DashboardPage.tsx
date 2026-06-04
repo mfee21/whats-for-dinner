@@ -37,7 +37,9 @@ function addDays(date: Date, n: number): Date {
 export default function DashboardPage({ session }: DashboardPageProps) {
   const [dayPlans, setDayPlans] = useState<DayPlan[]>([])
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([])
+  const [cooks, setCooks] = useState<Cook[]>([])
   const [cookMap, setCookMap] = useState<Map<string, Cook>>(new Map())
+  const [pickingCookForPlanId, setPickingCookForPlanId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -103,6 +105,7 @@ export default function DashboardPage({ session }: DashboardPageProps) {
         .select('*')
         .eq('user_id', session.user.id)
       const cooks = (cooksData ?? []) as Cook[]
+      setCooks(cooks)
       setCookMap(new Map(cooks.map((c) => [c.id, c])))
 
       setDayPlans(
@@ -123,6 +126,20 @@ export default function DashboardPage({ session }: DashboardPageProps) {
 
     void load()
   }, [session.user.id])
+
+  async function assignCook(planId: string, cookId: string | null) {
+    await supabase.from('meal_plans').update({ cook_id: cookId }).eq('id', planId)
+    setDayPlans((prev) =>
+      prev.map((day) => ({
+        ...day,
+        meals: day.meals.map(({ plan, recipe }) => ({
+          plan: plan.id === planId ? { ...plan, cook_id: cookId } : plan,
+          recipe,
+        })),
+      })),
+    )
+    setPickingCookForPlanId(null)
+  }
 
   function toggleItem(id: string) {
     setShoppingItems((prev) =>
@@ -189,10 +206,10 @@ export default function DashboardPage({ session }: DashboardPageProps) {
             ) : (
               <ul className="flex flex-col gap-2">
                 {todayPlan.meals.map(({ plan, recipe }) => (
-                  <li key={plan.id}>
+                  <li key={plan.id} className="rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:border-gray-400 hover:bg-white">
                     <Link
                       to={`/recipes/${recipe.id}/cook`}
-                      className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-base font-medium text-gray-800 transition-colors hover:border-gray-400 hover:bg-white"
+                      className="flex items-center gap-3 px-4 pt-3 pb-2 text-base font-medium text-gray-800"
                     >
                       {recipe.image_url ? (
                         <img
@@ -205,11 +222,37 @@ export default function DashboardPage({ session }: DashboardPageProps) {
                           🍽
                         </div>
                       )}
-                      <span className="min-w-0 flex-1 truncate">{recipe.name}</span>
-                      {plan.cook_id && cookMap.get(plan.cook_id) ? (
-                        <CookBadge cook={cookMap.get(plan.cook_id)!} />
-                      ) : null}
+                      <span className="min-w-0 truncate">{recipe.name}</span>
                     </Link>
+                    <div className="px-4 pb-2">
+                      {pickingCookForPlanId === plan.id ? (
+                        <select
+                          // eslint-disable-next-line jsx-a11y/no-autofocus
+                          autoFocus
+                          value={plan.cook_id ?? ''}
+                          onChange={(e) => void assignCook(plan.id, e.target.value || null)}
+                          onBlur={() => setPickingCookForPlanId(null)}
+                          className="rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 focus:border-gray-500 focus:outline-none"
+                        >
+                          <option value="">— no cook —</option>
+                          {cooks.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      ) : plan.cook_id && cookMap.get(plan.cook_id) ? (
+                        <button type="button" onClick={() => setPickingCookForPlanId(plan.id)}>
+                          <CookBadge cook={cookMap.get(plan.cook_id)!} />
+                        </button>
+                      ) : cooks.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setPickingCookForPlanId(plan.id)}
+                          className="text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          + cook
+                        </button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -246,8 +289,32 @@ export default function DashboardPage({ session }: DashboardPageProps) {
                         >
                           {recipe.name}
                         </Link>
-                        {plan.cook_id && cookMap.get(plan.cook_id) ? (
-                          <CookBadge cook={cookMap.get(plan.cook_id)!} />
+                        {pickingCookForPlanId === plan.id ? (
+                          <select
+                            // eslint-disable-next-line jsx-a11y/no-autofocus
+                            autoFocus
+                            value={plan.cook_id ?? ''}
+                            onChange={(e) => void assignCook(plan.id, e.target.value || null)}
+                            onBlur={() => setPickingCookForPlanId(null)}
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:border-gray-500 focus:outline-none"
+                          >
+                            <option value="">— no cook —</option>
+                            {cooks.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        ) : plan.cook_id && cookMap.get(plan.cook_id) ? (
+                          <button type="button" onClick={() => setPickingCookForPlanId(plan.id)}>
+                            <CookBadge cook={cookMap.get(plan.cook_id)!} />
+                          </button>
+                        ) : cooks.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setPickingCookForPlanId(plan.id)}
+                            className="text-left text-[10px] text-gray-400 hover:text-gray-600"
+                          >
+                            + cook
+                          </button>
                         ) : null}
                       </div>
                     ))
