@@ -9,11 +9,24 @@ type AnyListInstance = {
     removeItem(item: unknown): Promise<void>
     getItemByName(name: string): unknown
   } | undefined
-  createItem(opts: { name: string }): unknown
+  createItem(opts: { name: string; details?: string }): unknown
   teardown(): Promise<void>
 }
 
 type AnyListConstructor = new (opts: { email: string; password: string }) => AnyListInstance
+
+type NeedRow = { ingredient_name: string; recipes: { name: string } | null }
+
+function normalizeIngredient(ingredient: string): string {
+  return ingredient
+    .replace(/^\d[\d\s./⁄¼½¾⅓⅔⅛⅜⅝⅞]*/, '')
+    .replace(
+      /^(cups?|tbsps?|tsps?|tablespoons?|teaspoons?|oz|ounces?|lbs?|pounds?|grams?|g|kg|ml|l|liters?|litres?|cloves?|bunch(?:es)?|stalks?|slices?|pieces?|cans?|packages?|pkgs?|bags?|jars?|bottles?|sprigs?|handfuls?|pinch(?:es)?)\b\s*/i,
+      '',
+    )
+    .trim()
+    .toLowerCase()
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -63,8 +76,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'action and ingredientName are required' })
   }
 
+  // The caller already applied the toggle to pantry_needs before calling this endpoint,
+  // so querying now gives us the current desired state — no need to branch on action.
+  const normalizedTarget = normalizeIngredient(body.ingredientName)
+
+  const { data: allNeeds } = await db
+    .from('pantry_needs')
+    .select('ingredient_name, recipes(name)')
+
+  const matchingNeeds = ((allNeeds as NeedRow[]) ?? []).filter(
+    (n) => normalizeIngredient(n.ingredient_name) === normalizedTarget,
+  )
+  const recipeNames = [
+    ...new Set(
+      matchingNeeds.map((n) => n.recipes?.name).filter((name): name is string => Boolean(name)),
+    ),
+  ]
+
   const listName = (settings.anylist_list_name as string | null) ?? 'Groceries'
-  const anylist = new AnyList({ email: settings.anylist_email as string, password: settings.anylist_password as string })
+  const anylist = new AnyList({
+    email: settings.anylist_email as string,
+    password: settings.anylist_password as string,
+  })
 
   try {
     await anylist.login()
@@ -76,11 +109,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: `AnyList list "${listName}" not found` })
     }
 
-    if (body.action === 'add') {
-      await list.addItem(anylist.createItem({ name: body.ingredientName }))
-    } else {
-      const item = list.getItemByName(body.ingredientName)
-      if (item) await list.removeItem(item)
+    // Remove existing entry for this normalized name (handles rename/update cleanly)
+    const existing = list.getItemByName(normalizedTarget)
+    if (existing) await list.removeItem(existing)
+
+    // Re-add only if at least one recipe still needs it
+    if (matchingNeeds.length > 0) {
+      const details = recipeNames.length > 0 ? `Needed for: ${recipeNames.join(', ')}` : ''
+      await list.addItem(anylist.createItem({ name: normalizedTarget, details }))
     }
 
     return res.status(200).json({ ok: true })
