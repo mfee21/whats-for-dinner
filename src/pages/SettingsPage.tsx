@@ -37,6 +37,7 @@ export default function SettingsPage({ session }: SettingsPageProps) {
   const [newCookName, setNewCookName] = useState('')
   const [newCookColor, setNewCookColor] = useState('#6366f1')
   const [isAddingCook, setIsAddingCook] = useState(false)
+  const [cookError, setCookError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadSettings() {
@@ -117,12 +118,15 @@ export default function SettingsPage({ session }: SettingsPageProps) {
     e.preventDefault()
     if (!newCookName.trim()) return
     setIsAddingCook(true)
+    setCookError(null)
     const { data, error } = await supabase
       .from('cooks')
       .insert({ user_id: session.user.id, name: newCookName.trim(), color: newCookColor })
       .select('*')
       .single()
-    if (!error && data) {
+    if (error) {
+      setCookError(error.message)
+    } else if (data) {
       const updated = [...cooks, data as Cook].sort((a, b) => a.name.localeCompare(b.name))
       setCooks(updated)
       setNewCookName('')
@@ -347,6 +351,10 @@ export default function SettingsPage({ session }: SettingsPageProps) {
               })}
             </div>
           </div>
+
+          {cookError ? (
+            <p className="text-sm text-red-700">{cookError}</p>
+          ) : null}
 
           <div>
             <button
