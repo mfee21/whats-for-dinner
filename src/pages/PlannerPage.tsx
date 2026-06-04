@@ -4,6 +4,7 @@ import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
+import RecipeIndex from '../components/RecipeIndex'
 import { supabase } from '../lib/supabase'
 import type { MealPlan, Recipe } from '../types/database'
 
@@ -205,6 +206,7 @@ export default function PlannerPage({ session }: PlannerPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null)
+  const [activeLetter, setActiveLetter] = useState<string | null>(null)
 
   const weekEnd = addDays(weekStart, 6)
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -397,17 +399,14 @@ export default function PlannerPage({ session }: PlannerPageProps) {
             </div>
           </div>
 
-          <aside>
-            <h2 className="text-sm font-semibold text-gray-700">Recipes</h2>
-            <p className="mt-0.5 text-xs text-gray-600">Drag onto a day to add it.</p>
-            <div className="mt-3 grid gap-2">
-              {recipes.length === 0 ? (
-                <p className="text-xs text-gray-400">No recipes yet.</p>
-              ) : (
-                recipes.map((recipe) => <DraggableRecipe key={recipe.id} recipe={recipe} />)
-              )}
-            </div>
-          </aside>
+          <RecipeIndex
+            recipes={recipes}
+            activeLetter={activeLetter}
+            onActiveLetterChange={setActiveLetter}
+            title="Recipes"
+            description="Search or browse, then drag onto a day."
+            renderItem={(recipe) => <DraggableRecipe recipe={recipe} />}
+          />
         </div>
 
         <DragOverlay>

@@ -9,6 +9,7 @@ type RecipeIndexProps = {
   onActiveLetterChange: (letter: string) => void
   title?: string
   description?: string
+  renderItem?: (recipe: Recipe) => React.ReactNode
 }
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
@@ -24,6 +25,7 @@ export default function RecipeIndex({
   onActiveLetterChange,
   title = 'Recipe Index',
   description = 'Choose a letter to reveal recipe titles.',
+  renderItem,
 }: RecipeIndexProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -77,12 +79,14 @@ export default function RecipeIndex({
             <ul className="grid gap-2">
               {searchResults.map((recipe) => (
                 <li key={recipe.id}>
-                  <Link
-                    to={`/recipes/${recipe.id}/cook`}
-                    className="block rounded border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-800 hover:border-gray-900 hover:text-gray-900"
-                  >
-                    {recipe.name}
-                  </Link>
+                  {renderItem ? renderItem(recipe) : (
+                    <Link
+                      to={`/recipes/${recipe.id}/cook`}
+                      className="block rounded border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-800 hover:border-gray-900 hover:text-gray-900"
+                    >
+                      {recipe.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -137,12 +141,14 @@ export default function RecipeIndex({
               <ul className="mt-2 grid gap-2">
                 {activeLetterRecipes.map((recipe) => (
                   <li key={recipe.id}>
-                    <Link
-                      to={`/recipes/${recipe.id}/cook`}
-                      className="block rounded border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-800 hover:border-gray-900 hover:text-gray-900"
-                    >
-                      {recipe.name}
-                    </Link>
+                    {renderItem ? renderItem(recipe) : (
+                      <Link
+                        to={`/recipes/${recipe.id}/cook`}
+                        className="block rounded border border-gray-300 bg-gray-50 px-2 py-1.5 text-sm text-gray-800 hover:border-gray-900 hover:text-gray-900"
+                      >
+                        {recipe.name}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
