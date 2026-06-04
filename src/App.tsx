@@ -3,6 +3,7 @@ import { Link, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import AuthPage from './pages/AuthPage'
+import DashboardPage from './pages/DashboardPage'
 import HomePage from './pages/HomePage'
 import RecipesPage from './pages/RecipesPage'
 import RecipeCookPage from './pages/RecipeCookPage'
@@ -60,6 +61,12 @@ export default function App() {
             What's For Dinner
           </Link>
           <Link
+            to="/recipes"
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900"
+          >
+            Recipes
+          </Link>
+          <Link
             to="/add"
             className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900"
           >
@@ -106,7 +113,8 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto">
         <Routes>
-          <Route path="/" element={<HomePage session={session} />} />
+          <Route path="/" element={<DashboardPage session={session} />} />
+          <Route path="/recipes" element={<HomePage session={session} />} />
           <Route path="/add" element={<RecipesPage session={session} />} />
           <Route path="/recipes/:recipeId/cook" element={<RecipeCookPage session={session} />} />
           <Route path="/recipes/:recipeId/edit" element={<RecipeEditPage session={session} />} />

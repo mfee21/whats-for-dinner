@@ -142,7 +142,7 @@ export default function HomePage({ session }: HomePageProps) {
     <div className="p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h1 className="text-2xl font-bold text-gray-950">Home</h1>
+            <h1 className="text-2xl font-bold text-gray-950">Recipes</h1>
           <p className="mt-2 text-gray-700">Browse your dishes and jump into cook mode quickly.</p>
         </div>
         <button
