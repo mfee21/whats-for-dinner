@@ -24,6 +24,28 @@ function extractOgImage(html: string): string | null {
   return match?.[1] ?? null
 }
 
+function extractJsonLd(html: string): string | null {
+  const matches = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+  for (const match of matches) {
+    try {
+      const data: unknown = JSON.parse(match[1])
+      const items = Array.isArray(data) ? data : [data]
+      for (const item of items) {
+        const typed = item as Record<string, unknown>
+        if (typed['@type'] === 'Recipe') return JSON.stringify(typed)
+        const graph = typed['@graph']
+        if (Array.isArray(graph)) {
+          const recipe = graph.find((g: Record<string, unknown>) => g['@type'] === 'Recipe')
+          if (recipe) return JSON.stringify(recipe)
+        }
+      }
+    } catch {
+      // skip malformed JSON-LD blocks
+    }
+  }
+  return null
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -70,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const html = await pageRes.text()
       imageUrl = extractOgImage(html)
-      recipeText = stripHtml(html).slice(0, 15000)
+      recipeText = extractJsonLd(html) ?? stripHtml(html).slice(0, 15000)
     } catch {
       return res.status(400).json({
         error: 'Could not reach that URL. Try pasting the recipe text instead.',
