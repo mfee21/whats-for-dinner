@@ -5,6 +5,17 @@ import { CookBadge } from '../components/CookBadge'
 import { supabase } from '../lib/supabase'
 import type { Cook, UserSettings } from '../types/database'
 
+const COOK_COLORS = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#06b6d4', // cyan
+  '#6366f1', // indigo
+  '#a855f7', // purple
+  '#ec4899', // pink
+]
+
 type SettingsPageProps = {
   session: Session
 }
@@ -52,7 +63,12 @@ export default function SettingsPage({ session }: SettingsPageProps) {
         .select('*')
         .eq('user_id', session.user.id)
         .order('name')
-      if (data) setCooks(data as Cook[])
+      if (data) {
+        const loaded = data as Cook[]
+        setCooks(loaded)
+        const takenColors = new Set(loaded.map((c) => c.color))
+        setNewCookColor(COOK_COLORS.find((c) => !takenColors.has(c)) ?? COOK_COLORS[0])
+      }
     }
     void loadCooks()
   }, [session.user.id])
@@ -107,16 +123,23 @@ export default function SettingsPage({ session }: SettingsPageProps) {
       .select('*')
       .single()
     if (!error && data) {
-      setCooks((prev) => [...prev, data as Cook].sort((a, b) => a.name.localeCompare(b.name)))
+      const updated = [...cooks, data as Cook].sort((a, b) => a.name.localeCompare(b.name))
+      setCooks(updated)
       setNewCookName('')
-      setNewCookColor('#6366f1')
+      const takenColors = new Set(updated.map((c) => c.color))
+      setNewCookColor(COOK_COLORS.find((c) => !takenColors.has(c)) ?? COOK_COLORS[0])
     }
     setIsAddingCook(false)
   }
 
   async function handleDeleteCook(id: string) {
     await supabase.from('cooks').delete().eq('id', id)
-    setCooks((prev) => prev.filter((c) => c.id !== id))
+    setCooks((prev) => {
+      const updated = prev.filter((c) => c.id !== id)
+      const takenColors = new Set(updated.map((c) => c.color))
+      setNewCookColor(COOK_COLORS.find((c) => !takenColors.has(c)) ?? COOK_COLORS[0])
+      return updated
+    })
   }
 
   async function handleDisconnectGoogle() {
@@ -267,25 +290,25 @@ export default function SettingsPage({ session }: SettingsPageProps) {
         </p>
 
         {cooks.length > 0 && (
-          <ul className="mt-4 flex flex-col gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {cooks.map((cook) => (
-              <li key={cook.id} className="flex items-center justify-between gap-3">
+              <span key={cook.id} className="group relative inline-flex items-center gap-1">
                 <CookBadge cook={cook} />
-                <span className="flex-1 text-sm text-gray-700">{cook.name}</span>
                 <button
                   type="button"
                   onClick={() => void handleDeleteCook(cook.id)}
-                  className="text-xs text-gray-400 hover:text-red-600"
+                  aria-label={`Remove ${cook.name}`}
+                  className="ml-0.5 text-[10px] text-gray-400 hover:text-red-500"
                 >
-                  Remove
+                  ×
                 </button>
-              </li>
+              </span>
             ))}
-          </ul>
+          </div>
         )}
 
-        <form onSubmit={(e) => void handleAddCook(e)} className="mt-4 flex items-end gap-3">
-          <div className="flex-1">
+        <form onSubmit={(e) => void handleAddCook(e)} className="mt-4 grid gap-3">
+          <div>
             <label className="block text-sm font-medium text-gray-700" htmlFor="cook-name">
               Name
             </label>
@@ -298,25 +321,42 @@ export default function SettingsPage({ session }: SettingsPageProps) {
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none"
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700" htmlFor="cook-color">
-              Color
-            </label>
-            <input
-              id="cook-color"
-              type="color"
-              value={newCookColor}
-              onChange={(e) => setNewCookColor(e.target.value)}
-              className="mt-1 h-[38px] w-14 cursor-pointer rounded-md border border-gray-300 p-0.5"
-            />
+            <p className="text-sm font-medium text-gray-700">Color</p>
+            <div className="mt-2 flex gap-2">
+              {COOK_COLORS.map((hex) => {
+                const taken = cooks.some((c) => c.color === hex)
+                return (
+                  <button
+                    key={hex}
+                    type="button"
+                    disabled={taken}
+                    onClick={() => setNewCookColor(hex)}
+                    title={hex}
+                    className={`h-7 w-7 rounded-full border-2 transition-transform ${
+                      taken
+                        ? 'cursor-not-allowed opacity-30'
+                        : newCookColor === hex
+                          ? 'scale-110 border-gray-900'
+                          : 'border-transparent hover:scale-105 hover:border-gray-400'
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                )
+              })}
+            </div>
           </div>
-          <button
-            type="submit"
-            disabled={isAddingCook || !newCookName.trim()}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
-          >
-            {isAddingCook ? 'Adding…' : 'Add'}
-          </button>
+
+          <div>
+            <button
+              type="submit"
+              disabled={isAddingCook || !newCookName.trim()}
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              {isAddingCook ? 'Adding…' : 'Add cook'}
+            </button>
+          </div>
         </form>
       </section>
     </div>
