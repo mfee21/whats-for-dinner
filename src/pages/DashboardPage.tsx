@@ -282,7 +282,7 @@ export default function DashboardPage({ session }: DashboardPageProps) {
                     <p className="text-xs text-gray-300">—</p>
                   ) : (
                     day.meals.map(({ plan, recipe }) => (
-                      <div key={plan.id} className="flex flex-col gap-0.5">
+                      <div key={plan.id} className="flex flex-col items-start gap-0.5">
                         <Link
                           to={`/recipes/${recipe.id}/cook`}
                           className="truncate text-xs text-gray-700 hover:text-gray-950 hover:underline"
