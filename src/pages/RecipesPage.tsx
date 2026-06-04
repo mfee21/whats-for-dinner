@@ -233,56 +233,64 @@ export default function RecipesPage({ session }: RecipesPageProps) {
 
       <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="rounded-lg border border-gray-300 bg-white p-5 shadow-sm">
-          <label className="block text-sm font-semibold text-gray-800">
-            Import from URL
-            <div className="mt-1 flex gap-2">
-              <input
-                type="url"
-                value={importUrl}
-                onChange={(event) => setImportUrl(event.target.value)}
-                placeholder="https://www.anyrecipesite.com/best-tacos"
-                className="flex-1 rounded-md border border-gray-400 bg-gray-50 px-3 py-2 text-sm text-gray-950 focus:border-gray-900 focus:outline-none"
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+            <label className="block text-sm font-semibold text-gray-800">
+              Import from URL
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="url"
+                  value={importUrl}
+                  onChange={(event) => setImportUrl(event.target.value)}
+                  placeholder="https://www.anyrecipesite.com/best-tacos"
+                  className="flex-1 rounded-md border border-gray-400 bg-white px-3 py-2 text-sm text-gray-950 focus:border-gray-900 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={isImporting || !importUrl.trim()}
+                  onClick={() => void handleImport('url', importUrl)}
+                  className="rounded-md border border-gray-400 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isImporting ? 'Fetching…' : 'Fetch'}
+                </button>
+              </div>
+            </label>
+
+            <div className="relative my-4 flex items-center">
+              <div className="flex-1 border-t border-gray-300" />
+              <span className="mx-3 text-sm font-semibold text-gray-600">or paste text</span>
+              <div className="flex-1 border-t border-gray-300" />
+            </div>
+
+            <label className="block text-sm font-semibold text-gray-800">
+              Paste Recipe Text
+              <textarea
+                value={importText}
+                onChange={(event) => setImportText(event.target.value)}
+                className="mt-1 min-h-32 w-full rounded-md border border-gray-400 bg-white px-3 py-2 text-gray-950 focus:border-gray-900 focus:outline-none"
+                placeholder={"Best Chicken Tacos\n\nIngredients\n1 lb chicken thighs\n1 tsp salt\n\nInstructions\nSeason chicken and cook..."}
               />
+            </label>
+
+            <div className="mt-3 flex items-center gap-3">
               <button
                 type="button"
-                disabled={isImporting || !importUrl.trim()}
-                onClick={() => void handleImport('url', importUrl)}
+                disabled={isImporting || !importText.trim()}
+                onClick={() => void handleImport('text', importText)}
                 className="rounded-md border border-gray-400 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isImporting ? 'Fetching…' : 'Fetch'}
+                {isImporting ? 'Importing…' : 'Import from Text'}
               </button>
+              {parseMessage ? <p className="text-sm text-gray-700">{parseMessage}</p> : null}
             </div>
-          </label>
-
-          <div className="relative my-4 flex items-center">
-            <div className="flex-1 border-t border-gray-200" />
-            <span className="mx-3 text-xs text-gray-400">or paste text</span>
-            <div className="flex-1 border-t border-gray-200" />
           </div>
 
-          <label className="block text-sm font-semibold text-gray-800">
-            Paste Recipe Text
-            <textarea
-              value={importText}
-              onChange={(event) => setImportText(event.target.value)}
-              className="mt-1 min-h-32 w-full rounded-md border border-gray-400 bg-gray-50 px-3 py-2 text-gray-950 focus:border-gray-900 focus:outline-none"
-              placeholder={"Best Chicken Tacos\n\nIngredients\n1 lb chicken thighs\n1 tsp salt\n\nInstructions\nSeason chicken and cook..."}
-            />
-          </label>
-
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              disabled={isImporting || !importText.trim()}
-              onClick={() => void handleImport('text', importText)}
-              className="rounded-md border border-gray-400 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:border-gray-900 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isImporting ? 'Importing…' : 'Import from Text'}
-            </button>
-            {parseMessage ? <p className="text-sm text-gray-700">{parseMessage}</p> : null}
+          <div className="my-6 flex items-center gap-3">
+            <div className="flex-1 border-t border-gray-300" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Recipe Details</span>
+            <div className="flex-1 border-t border-gray-300" />
           </div>
 
-          <form className="mt-4 grid gap-4" onSubmit={handleCreateRecipe}>
+          <form className="grid gap-4" onSubmit={handleCreateRecipe}>
             <label className="text-sm font-semibold text-gray-800">
               Name
               <input
