@@ -51,5 +51,9 @@ export interface UserSettings {
   anylist_email: string | null
   anylist_password: string | null
   anylist_list_name: string | null
+  google_access_token: string | null
+  google_refresh_token: string | null
+  google_token_expiry: number | null
+  google_calendar_id: string | null
   updated_at: string
 }

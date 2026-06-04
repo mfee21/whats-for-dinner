@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { UserSettings } from '../types/database'
 
@@ -8,11 +9,16 @@ type SettingsPageProps = {
 }
 
 export default function SettingsPage({ session }: SettingsPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const googleStatus = searchParams.get('google')
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [listName, setListName] = useState('')
+  const [googleCalendarId, setGoogleCalendarId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
@@ -28,11 +34,19 @@ export default function SettingsPage({ session }: SettingsPageProps) {
         setEmail(s.anylist_email ?? '')
         setPassword(s.anylist_password ?? '')
         setListName(s.anylist_list_name ?? '')
+        setGoogleCalendarId(s.google_calendar_id)
       }
       setIsLoading(false)
     }
     void loadSettings()
   }, [session.user.id])
+
+  // Clear ?google= param from URL after reading it
+  useEffect(() => {
+    if (googleStatus) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [googleStatus, setSearchParams])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -54,6 +68,31 @@ export default function SettingsPage({ session }: SettingsPageProps) {
     setSaveMessage(error ? { type: 'error', text: error.message } : { type: 'success', text: 'Settings saved.' })
   }
 
+  async function handleConnectGoogle() {
+    setIsConnectingGoogle(true)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) { setIsConnectingGoogle(false); return }
+
+    const res = await fetch('/api/google-auth', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const { url } = await res.json() as { url: string }
+    window.location.href = url
+  }
+
+  async function handleDisconnectGoogle() {
+    await supabase.from('user_settings').update({
+      google_access_token: null,
+      google_refresh_token: null,
+      google_token_expiry: null,
+      google_calendar_id: null,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', session.user.id)
+
+    setGoogleCalendarId(null)
+  }
+
   if (isLoading) {
     return <div className="p-8 text-sm text-gray-600">Loading settings...</div>
   }
@@ -62,7 +101,51 @@ export default function SettingsPage({ session }: SettingsPageProps) {
     <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-950">Settings</h1>
 
+      {/* Google Calendar */}
       <section className="mt-8 max-w-md">
+        <h2 className="text-base font-semibold text-gray-800">Google Calendar</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Sync your meal plan to a dedicated "What's For Dinner" Google Calendar.
+          Events are created when you add a meal and removed when you remove one.
+        </p>
+
+        {googleStatus === 'connected' && (
+          <p className="mt-2 text-sm text-emerald-700">Google Calendar connected.</p>
+        )}
+        {googleStatus === 'denied' && (
+          <p className="mt-2 text-sm text-amber-700">Authorization cancelled.</p>
+        )}
+        {googleStatus === 'error' && (
+          <p className="mt-2 text-sm text-red-700">Something went wrong. Try connecting again.</p>
+        )}
+
+        <div className="mt-4">
+          {googleCalendarId ? (
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-700">Connected</span>
+              <button
+                type="button"
+                onClick={() => void handleDisconnectGoogle()}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-red-400 hover:text-red-600"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleConnectGoogle()}
+              disabled={isConnectingGoogle}
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              {isConnectingGoogle ? 'Redirecting…' : 'Connect Google Calendar'}
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* AnyList */}
+      <section className="mt-10 max-w-md">
         <h2 className="text-base font-semibold text-gray-800">AnyList integration</h2>
         <p className="mt-1 text-sm text-gray-500">
           When you mark an ingredient as needed in cook mode, it will automatically be added to

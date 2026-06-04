@@ -249,6 +249,8 @@ export default function PlannerPage({ session }: PlannerPageProps) {
   }
 
   async function addMeal(date: Date, recipeId: string) {
+    const recipe = recipes.find((r) => r.id === recipeId)
+
     const { data, error } = await supabase
       .from('meal_plans')
       .insert({
@@ -261,13 +263,59 @@ export default function PlannerPage({ session }: PlannerPageProps) {
       .single()
 
     if (error) { setErrorMessage(error.message); return }
-    setMealPlans((prev) => [...prev, data as MealPlan])
+    const plan = data as MealPlan
+    setMealPlans((prev) => [...prev, plan])
+
+    // Best-effort: create Google Calendar event and store the event ID
+    if (recipe) {
+      void (async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession()
+          const token = sessionData.session?.access_token
+          if (!token) return
+
+          const syncRes = await fetch('/api/calendar-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'create', recipeName: recipe.name, plannedDate: localDateStr(date) }),
+          })
+          const syncData = await syncRes.json() as { eventId?: string }
+          if (syncData.eventId) {
+            await supabase.from('meal_plans').update({ calendar_event_id: syncData.eventId }).eq('id', plan.id)
+            setMealPlans((prev) => prev.map((mp) => mp.id === plan.id ? { ...mp, calendar_event_id: syncData.eventId! } : mp))
+          }
+        } catch {
+          // Calendar sync failure never blocks the UI
+        }
+      })()
+    }
   }
 
   async function removeMeal(planId: string) {
+    const plan = mealPlans.find((mp) => mp.id === planId)
+
     const { error } = await supabase.from('meal_plans').delete().eq('id', planId)
     if (error) { setErrorMessage(error.message); return }
     setMealPlans((prev) => prev.filter((mp) => mp.id !== planId))
+
+    // Best-effort: delete Google Calendar event
+    if (plan?.calendar_event_id) {
+      void (async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession()
+          const token = sessionData.session?.access_token
+          if (!token) return
+
+          await fetch('/api/calendar-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'delete', calendarEventId: plan.calendar_event_id }),
+          })
+        } catch {
+          // Calendar sync failure never blocks the UI
+        }
+      })()
+    }
   }
 
   function addRandomMeal(date: Date) {
