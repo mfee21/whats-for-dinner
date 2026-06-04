@@ -40,6 +40,7 @@ export interface ShoppingListCache {
 export interface PantryNeed {
   id: string
   user_id: string
+  recipe_id: string | null
   ingredient_name: string
   added_at: string
 }

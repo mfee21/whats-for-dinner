@@ -216,15 +216,17 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
   }, [progressKey, recipe])
 
   useEffect(() => {
+    if (!recipeId) return
     async function loadNeeds() {
       const { data } = await supabase
         .from('pantry_needs')
         .select('ingredient_name')
         .eq('user_id', session.user.id)
+        .eq('recipe_id', recipeId)
       if (data) setNeededIngredients(new Set(data.map((r) => r.ingredient_name as string)))
     }
     void loadNeeds()
-  }, [session.user.id])
+  }, [session.user.id, recipeId])
 
   async function toggleNeed(ingredientName: string) {
     const isNeeded = neededIngredients.has(ingredientName)
@@ -240,9 +242,10 @@ export default function RecipeCookPage({ session }: RecipeCookPageProps) {
         .from('pantry_needs')
         .delete()
         .eq('user_id', session.user.id)
+        .eq('recipe_id', recipeId)
         .eq('ingredient_name', ingredientName)
     } else {
-      await supabase.from('pantry_needs').insert({ user_id: session.user.id, ingredient_name: ingredientName })
+      await supabase.from('pantry_needs').insert({ user_id: session.user.id, recipe_id: recipeId, ingredient_name: ingredientName })
     }
 
     const { data: sessionData } = await supabase.auth.getSession()
