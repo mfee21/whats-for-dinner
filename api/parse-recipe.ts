@@ -82,10 +82,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let imageUrl: string | null = null
 
   if (body.type === 'url') {
+    const scraperApiKey = process.env.SCRAPERAPI_KEY
+    if (!scraperApiKey) {
+      return res.status(500).json({ error: 'ScraperAPI key not configured on server.' })
+    }
     try {
-      const scrapeUrl = `https://api.scraperapi.com/?api_key=${process.env.SCRAPERAPI_KEY}&url=${encodeURIComponent(body.content)}`
+      const scrapeUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(body.content)}`
       const pageRes = await fetch(scrapeUrl)
       if (!pageRes.ok) {
+        const scraperError = await pageRes.text().catch(() => '')
+        console.error(`ScraperAPI ${pageRes.status}:`, scraperError)
         return res.status(400).json({
           error: `Could not fetch that URL (HTTP ${pageRes.status}). Try pasting the recipe text instead.`,
         })
