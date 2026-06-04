@@ -55,6 +55,7 @@ export interface MealPlan {
   meal_slot: string
   calendar_event_id: string | null
   cook_id: string | null
+  prep_event_ids: Record<string, string> | null
   created_at: string
 }
 

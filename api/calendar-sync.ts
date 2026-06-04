@@ -33,10 +33,35 @@ async function getValidToken(
   return data.access_token
 }
 
-function nextDay(dateStr: string): string {
+function offsetDate(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split('-').map(Number)
-  const next = new Date(y, m - 1, d + 1)
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+  const date = new Date(y, m - 1, d + days)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function nextDay(dateStr: string): string {
+  return offsetDate(dateStr, 1)
+}
+
+// How many days before the planned date each timing creates its event.
+const PREP_DAY_OFFSET: Record<string, number> = {
+  '30min': 0,
+  '1hr': 0,
+  '2hr': 0,
+  '4hr': 0,
+  'evening_before': -1,
+  'day_before': -1,
+  '2days_before': -2,
+}
+
+const PREP_TIMING_LABEL: Record<string, string> = {
+  '30min': '30 min before',
+  '1hr': '1 hour before',
+  '2hr': '2 hours before',
+  '4hr': '4 hours before',
+  'evening_before': 'evening before',
+  'day_before': 'day before',
+  '2days_before': '2 days before',
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -78,6 +103,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     plannedDate?: string
     calendarEventId?: string
     ingredients?: { name: string; amount: string; unit: string }[]
+    prepTasks?: { id: string; task: string; timing: string }[]
+    prepEventIds?: Record<string, string>
   }
 
   try {
@@ -107,17 +134,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       )
       const event = await eventRes.json() as { id: string }
-      return res.status(200).json({ eventId: event.id })
 
-    } else if (body.action === 'delete') {
-      if (!body.calendarEventId) {
-        return res.status(200).json({ skipped: true, reason: 'No calendar event ID' })
+      // Create one all-day event per prep task that has notify:true
+      const prepEventIds: Record<string, string> = {}
+      for (const pt of (body.prepTasks ?? [])) {
+        const dayOffset = PREP_DAY_OFFSET[pt.timing] ?? 0
+        const prepDate = offsetDate(body.plannedDate, dayOffset)
+        const label = PREP_TIMING_LABEL[pt.timing] ?? pt.timing
+        const prepRes = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              summary: `Prep: ${pt.task} — ${body.recipeName}`,
+              description: `${label} cooking ${body.recipeName}`,
+              start: { date: prepDate },
+              end: { date: nextDay(prepDate) },
+            }),
+          },
+        )
+        const prepEvent = await prepRes.json() as { id?: string }
+        if (prepEvent.id) prepEventIds[pt.id] = prepEvent.id
       }
 
-      await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(body.calendarEventId)}`,
-        { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } },
-      )
+      return res.status(200).json({ eventId: event.id, prepEventIds })
+
+    } else if (body.action === 'delete') {
+      if (body.calendarEventId) {
+        await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(body.calendarEventId)}`,
+          { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } },
+        )
+      }
+
+      for (const eventId of Object.values(body.prepEventIds ?? {})) {
+        await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+          { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } },
+        )
+      }
+
       return res.status(200).json({ ok: true })
     }
 
