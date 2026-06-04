@@ -277,7 +277,7 @@ export default function PlannerPage({ session }: PlannerPageProps) {
           const syncRes = await fetch('/api/calendar-sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ action: 'create', recipeName: recipe.name, plannedDate: localDateStr(date) }),
+            body: JSON.stringify({ action: 'create', recipeName: recipe.name, plannedDate: localDateStr(date), ingredients: recipe.ingredients }),
           })
           const syncData = await syncRes.json() as { eventId?: string }
           if (syncData.eventId) {

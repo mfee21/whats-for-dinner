@@ -77,6 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     recipeName?: string
     plannedDate?: string
     calendarEventId?: string
+    ingredients?: { name: string; amount: string; unit: string }[]
   }
 
   try {
@@ -85,6 +86,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'recipeName and plannedDate required' })
       }
 
+      const description = body.ingredients?.length
+        ? 'Ingredients:\n' + body.ingredients.map((ing) => {
+            const prefix = [ing.amount.trim(), ing.unit.trim()].filter(Boolean).join(' ')
+            return `• ${prefix ? `${prefix} ` : ''}${ing.name.trim()}`
+          }).join('\n')
+        : undefined
+
       const eventRes = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
         {
@@ -92,6 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             summary: body.recipeName,
+            description,
             start: { date: body.plannedDate },
             end: { date: nextDay(body.plannedDate) },
           }),
