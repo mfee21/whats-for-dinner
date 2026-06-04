@@ -19,6 +19,14 @@ export interface Recipe {
   updated_at: string
 }
 
+export interface Cook {
+  id: string
+  user_id: string
+  name: string
+  color: string
+  created_at: string
+}
+
 export interface MealPlan {
   id: string
   user_id: string
@@ -26,6 +34,7 @@ export interface MealPlan {
   planned_date: string
   meal_slot: string
   calendar_event_id: string | null
+  cook_id: string | null
   created_at: string
 }
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Link } from 'react-router-dom'
+import { CookBadge } from '../components/CookBadge'
 import { supabase } from '../lib/supabase'
-import type { MealPlan, Recipe } from '../types/database'
+import type { Cook, MealPlan, Recipe } from '../types/database'
 
 type DashboardPageProps = { session: Session }
 
@@ -36,6 +37,7 @@ function addDays(date: Date, n: number): Date {
 export default function DashboardPage({ session }: DashboardPageProps) {
   const [dayPlans, setDayPlans] = useState<DayPlan[]>([])
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([])
+  const [cookMap, setCookMap] = useState<Map<string, Cook>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -95,6 +97,13 @@ export default function DashboardPage({ session }: DashboardPageProps) {
         arr.push(plan)
         plansByDate.set(plan.planned_date, arr)
       }
+
+      const { data: cooksData } = await supabase
+        .from('cooks')
+        .select('*')
+        .eq('user_id', session.user.id)
+      const cooks = (cooksData ?? []) as Cook[]
+      setCookMap(new Map(cooks.map((c) => [c.id, c])))
 
       setDayPlans(
         days.map((date) => {
@@ -196,7 +205,10 @@ export default function DashboardPage({ session }: DashboardPageProps) {
                           🍽
                         </div>
                       )}
-                      <span className="min-w-0 truncate">{recipe.name}</span>
+                      <span className="min-w-0 flex-1 truncate">{recipe.name}</span>
+                      {plan.cook_id && cookMap.get(plan.cook_id) ? (
+                        <CookBadge cook={cookMap.get(plan.cook_id)!} />
+                      ) : null}
                     </Link>
                   </li>
                 ))}
@@ -227,13 +239,17 @@ export default function DashboardPage({ session }: DashboardPageProps) {
                     <p className="text-xs text-gray-300">—</p>
                   ) : (
                     day.meals.map(({ plan, recipe }) => (
-                      <Link
-                        key={plan.id}
-                        to={`/recipes/${recipe.id}/cook`}
-                        className="truncate text-xs text-gray-700 hover:text-gray-950 hover:underline"
-                      >
-                        {recipe.name}
-                      </Link>
+                      <div key={plan.id} className="flex flex-col gap-0.5">
+                        <Link
+                          to={`/recipes/${recipe.id}/cook`}
+                          className="truncate text-xs text-gray-700 hover:text-gray-950 hover:underline"
+                        >
+                          {recipe.name}
+                        </Link>
+                        {plan.cook_id && cookMap.get(plan.cook_id) ? (
+                          <CookBadge cook={cookMap.get(plan.cook_id)!} />
+                        ) : null}
+                      </div>
                     ))
                   )}
                 </div>

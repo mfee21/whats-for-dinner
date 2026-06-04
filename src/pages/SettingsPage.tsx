@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useSearchParams } from 'react-router-dom'
+import { CookBadge } from '../components/CookBadge'
 import { supabase } from '../lib/supabase'
-import type { UserSettings } from '../types/database'
+import type { Cook, UserSettings } from '../types/database'
 
 type SettingsPageProps = {
   session: Session
@@ -20,6 +21,11 @@ export default function SettingsPage({ session }: SettingsPageProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const [cooks, setCooks] = useState<Cook[]>([])
+  const [newCookName, setNewCookName] = useState('')
+  const [newCookColor, setNewCookColor] = useState('#6366f1')
+  const [isAddingCook, setIsAddingCook] = useState(false)
 
   useEffect(() => {
     async function loadSettings() {
@@ -39,6 +45,16 @@ export default function SettingsPage({ session }: SettingsPageProps) {
       setIsLoading(false)
     }
     void loadSettings()
+
+    async function loadCooks() {
+      const { data } = await supabase
+        .from('cooks')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('name')
+      if (data) setCooks(data as Cook[])
+    }
+    void loadCooks()
   }, [session.user.id])
 
   // Clear ?google= param from URL after reading it
@@ -79,6 +95,28 @@ export default function SettingsPage({ session }: SettingsPageProps) {
     })
     const { url } = await res.json() as { url: string }
     window.location.href = url
+  }
+
+  async function handleAddCook(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newCookName.trim()) return
+    setIsAddingCook(true)
+    const { data, error } = await supabase
+      .from('cooks')
+      .insert({ user_id: session.user.id, name: newCookName.trim(), color: newCookColor })
+      .select('*')
+      .single()
+    if (!error && data) {
+      setCooks((prev) => [...prev, data as Cook].sort((a, b) => a.name.localeCompare(b.name)))
+      setNewCookName('')
+      setNewCookColor('#6366f1')
+    }
+    setIsAddingCook(false)
+  }
+
+  async function handleDeleteCook(id: string) {
+    await supabase.from('cooks').delete().eq('id', id)
+    setCooks((prev) => prev.filter((c) => c.id !== id))
   }
 
   async function handleDisconnectGoogle() {
@@ -217,6 +255,68 @@ export default function SettingsPage({ session }: SettingsPageProps) {
               {isSaving ? 'Saving…' : 'Save settings'}
             </button>
           </div>
+        </form>
+      </section>
+
+      {/* Cooks */}
+      <section className="mt-10 max-w-md">
+        <h2 className="text-base font-semibold text-gray-800">Cooks</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Add household cooks and assign a color. Badges appear on planned meals in the
+          Dashboard and Planner.
+        </p>
+
+        {cooks.length > 0 && (
+          <ul className="mt-4 flex flex-col gap-2">
+            {cooks.map((cook) => (
+              <li key={cook.id} className="flex items-center justify-between gap-3">
+                <CookBadge cook={cook} />
+                <span className="flex-1 text-sm text-gray-700">{cook.name}</span>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteCook(cook.id)}
+                  className="text-xs text-gray-400 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form onSubmit={(e) => void handleAddCook(e)} className="mt-4 flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700" htmlFor="cook-name">
+              Name
+            </label>
+            <input
+              id="cook-name"
+              type="text"
+              value={newCookName}
+              onChange={(e) => setNewCookName(e.target.value)}
+              placeholder="e.g. Matt"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="cook-color">
+              Color
+            </label>
+            <input
+              id="cook-color"
+              type="color"
+              value={newCookColor}
+              onChange={(e) => setNewCookColor(e.target.value)}
+              className="mt-1 h-[38px] w-14 cursor-pointer rounded-md border border-gray-300 p-0.5"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isAddingCook || !newCookName.trim()}
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+          >
+            {isAddingCook ? 'Adding…' : 'Add'}
+          </button>
         </form>
       </section>
     </div>

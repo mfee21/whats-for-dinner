@@ -4,9 +4,10 @@ import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
+import { CookBadge } from '../components/CookBadge'
 import RecipeIndex from '../components/RecipeIndex'
 import { supabase } from '../lib/supabase'
-import type { MealPlan, Recipe } from '../types/database'
+import type { Cook, MealPlan, Recipe } from '../types/database'
 
 type PlannerPageProps = {
   session: Session
@@ -61,13 +62,20 @@ function DraggableRecipe({ recipe }: { recipe: Recipe }) {
 function RecipeCard({
   recipe,
   isPast,
+  cook,
+  cooks,
   onRemove,
+  onAssignCook,
 }: {
   recipe: Recipe
   isPast: boolean
+  cook: Cook | undefined
+  cooks: Cook[]
   onRemove: () => void
+  onAssignCook: (cookId: string | null) => void
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const [pickingCook, setPickingCook] = useState(false)
 
   return (
     <div className={`group relative rounded border px-2 py-1.5 ${isPast ? 'border-gray-300 bg-gray-100' : 'border-gray-300 bg-gray-50'}`}>
@@ -107,6 +115,37 @@ function RecipeCard({
           >
             ×
           </button>
+
+          {/* Cook badge / picker */}
+          <div className="relative z-10 mt-1">
+            {!isPast && pickingCook ? (
+              <select
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                value={cook?.id ?? ''}
+                onChange={(e) => { onAssignCook(e.target.value || null); setPickingCook(false) }}
+                onBlur={() => setPickingCook(false)}
+                className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:border-gray-500 focus:outline-none"
+              >
+                <option value="">— no cook —</option>
+                {cooks.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            ) : cook ? (
+              <button type="button" onClick={() => !isPast && setPickingCook(true)} className="block">
+                <CookBadge cook={cook} />
+              </button>
+            ) : !isPast && cooks.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setPickingCook(true)}
+                className="text-[10px] text-gray-400 hover:text-gray-600"
+              >
+                + cook
+              </button>
+            ) : null}
+          </div>
         </>
       )}
     </div>
@@ -117,14 +156,18 @@ function DroppableDay({
   date,
   plans,
   recipes,
+  cooks,
   onRemove,
   onRandom,
+  onAssignCook,
 }: {
   date: Date
   plans: MealPlan[]
   recipes: Recipe[]
+  cooks: Cook[]
   onRemove: (planId: string) => void
   onRandom: () => void
+  onAssignCook: (planId: string, cookId: string | null) => void
 }) {
   const dateStr = localDateStr(date)
   const todayStr = localDateStr(new Date())
@@ -133,6 +176,7 @@ function DroppableDay({
   const atMax = plans.length >= MAX_PER_DAY
   const { isOver, setNodeRef } = useDroppable({ id: dateStr, disabled: isPast || atMax })
 
+  const cookMap = new Map(cooks.map((c) => [c.id, c]))
   const dayRecipes = plans
     .map((p) => ({ plan: p, recipe: recipes.find((r) => r.id === p.recipe_id) }))
     .filter((x): x is { plan: MealPlan; recipe: Recipe } => x.recipe !== undefined)
@@ -169,7 +213,10 @@ function DroppableDay({
           key={plan.id}
           recipe={recipe}
           isPast={isPast}
+          cook={plan.cook_id ? cookMap.get(plan.cook_id) : undefined}
+          cooks={cooks}
           onRemove={() => onRemove(plan.id)}
+          onAssignCook={(cookId) => onAssignCook(plan.id, cookId)}
         />
       ))}
 
@@ -203,6 +250,7 @@ export default function PlannerPage({ session }: PlannerPageProps) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()))
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
+  const [cooks, setCooks] = useState<Cook[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null)
@@ -222,6 +270,16 @@ export default function PlannerPage({ session }: PlannerPageProps) {
       if (!error) setRecipes((data as Recipe[]) ?? [])
     }
     void loadRecipes()
+
+    async function loadCooks() {
+      const { data } = await supabase
+        .from('cooks')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('name')
+      if (data) setCooks(data as Cook[])
+    }
+    void loadCooks()
   }, [session.user.id])
 
   useEffect(() => {
@@ -320,6 +378,13 @@ export default function PlannerPage({ session }: PlannerPageProps) {
     }
   }
 
+  async function assignCook(planId: string, cookId: string | null) {
+    await supabase.from('meal_plans').update({ cook_id: cookId }).eq('id', planId)
+    setMealPlans((prev) =>
+      prev.map((mp) => (mp.id === planId ? { ...mp, cook_id: cookId } : mp)),
+    )
+  }
+
   function addRandomMeal(date: Date) {
     if (recipes.length === 0) return
     const pick = recipes[Math.floor(Math.random() * recipes.length)]
@@ -392,8 +457,10 @@ export default function PlannerPage({ session }: PlannerPageProps) {
                   date={date}
                   plans={getPlansForDay(date)}
                   recipes={recipes}
+                  cooks={cooks}
                   onRemove={(planId) => void removeMeal(planId)}
                   onRandom={() => addRandomMeal(date)}
+                  onAssignCook={(planId, cookId) => void assignCook(planId, cookId)}
                 />
               ))}
             </div>
